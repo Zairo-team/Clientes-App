@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { getTodayAppointments } from "@/lib/api/appointments"
 import { getBillingStats } from "@/lib/api/sales"
 import { getRecentActivity } from "@/lib/api/activity"
-import { Loader2, CreditCard, CalendarDays, Clock } from "lucide-react"
+import { Loader2, CreditCard, CalendarDays, Clock, MessageCircle, Eye } from "lucide-react"
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -169,6 +169,26 @@ export default function Dashboard() {
                               </p>
                             </div>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+                          {appointment.patient?.phone && (
+                            <a
+                              href={`https://wa.me/${appointment.patient.phone.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="size-7 md:size-8 rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-colors"
+                              title="Enviar WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            </a>
+                          )}
+                          <a
+                            href={`/pacientes/${appointment.patient?.id}`}
+                            className="size-7 md:size-8 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                            title="Ver detalle del paciente"
+                          >
+                            <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          </a>
                         </div>
                       </div>
                     ))

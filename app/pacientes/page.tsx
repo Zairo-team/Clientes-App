@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Sidebar } from '@/components/dashboard/sidebar'
-import { Search, Filter, Download, MoreVertical, Loader2, Eye, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Plus, Search, Eye, Mail, MessageCircle, Loader2, Filter, Download, MoreVertical, Edit, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { CreatePatientModal } from '@/components/patients/create-patient-modal'
 import { EditPatientModal } from '@/components/patients/edit-patient-modal'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
+import { useRouter } from 'next/navigation'
 import { getPatients, searchPatients } from '@/lib/api/patients'
 import type { Patient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -177,53 +177,45 @@ export default function PacientesPage() {
                     {patients.map((patient, index) => (
                       <div key={patient.id} className="p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div className={`size-10 rounded-full ${getColorClass(index)} flex items-center justify-center font-bold text-xs shrink-0`}>
                               {getInitials(patient.full_name)}
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-foreground truncate">{patient.full_name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{patient.email || 'Sin email'}</p>
+                              <p className="text-xs text-muted-foreground truncate">DNI: {patient.dni}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {patient.status === "active" ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                {"Activo"}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                                {"Inactivo"}
-                              </span>
+                            {patient.phone && (
+                              <a
+                                href={`https://wa.me/${patient.phone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="size-8 rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-colors"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
                             )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-primary">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => router.push(`/pacientes/${patient.id}`)}>
-                                  <Eye className="mr-2 size-4" />
-                                  Ver detalle
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {
-                                  setSelectedPatient(patient)
-                                  setIsEditModalOpen(true)
-                                }}>
-                                  <Edit className="mr-2 size-4" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="mr-2 size-4" />
-                                  Eliminar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {patient.email && (
+                              <a
+                                href={`mailto:${patient.email}`}
+                                className="size-8 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center transition-colors"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => router.push(`/pacientes/${patient.id}`)}
+                              className="size-8 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                         <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground pl-[52px]">
-                          <span>{getTimeAgo(patient.last_session_date || '')}</span>
+                          <span>{patient.email || 'Sin email'}</span>
+                          <span>•</span>
                           <span>{patient.phone || 'Sin teléfono'}</span>
                         </div>
                       </div>
@@ -239,15 +231,15 @@ export default function PacientesPage() {
                             {"Nombre"}
                           </th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            {"DNI"}
+                          </th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             {"Última Sesión"}
                           </th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             {"Contacto"}
                           </th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-center">
-                            {"Estado"}
-                          </th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">
                             {"Acciones"}
                           </th>
                         </tr>
@@ -264,6 +256,9 @@ export default function PacientesPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4">
+                              <span className="text-sm text-foreground font-medium">{patient.dni}</span>
+                            </td>
+                            <td className="px-6 py-4">
                               <p className="text-sm text-muted-foreground">
                                 {patient.last_session_date
                                   ? new Date(patient.last_session_date).toLocaleDateString('es-AR')
@@ -277,42 +272,36 @@ export default function PacientesPage() {
                                 <span className="text-xs text-muted-foreground/60">{patient.phone || 'Sin teléfono'}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-center">
-                              {patient.status === "active" ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                  {"Activo"}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
-                                  {"Inactivo"}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-                                    <MoreVertical className="w-5 h-5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => router.push(`/pacientes/${patient.id}`)}>
-                                    <Eye className="mr-2 size-4" />
-                                    Ver detalle
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => {
-                                    setSelectedPatient(patient)
-                                    setIsEditModalOpen(true)
-                                  }}>
-                                    <Edit className="mr-2 size-4" />
-                                    Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">
-                                    <Trash2 className="mr-2 size-4" />
-                                    Eliminar
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-center gap-2">
+                                {patient.phone && (
+                                  <a
+                                    href={`https://wa.me/${patient.phone.replace(/\D/g, '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="size-9 rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-colors"
+                                    title="Enviar WhatsApp"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                  </a>
+                                )}
+                                {patient.email && (
+                                  <a
+                                    href={`mailto:${patient.email}`}
+                                    className="size-9 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center transition-colors"
+                                    title="Enviar email"
+                                  >
+                                    <Mail className="w-4 h-4" />
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => router.push(`/pacientes/${patient.id}`)}
+                                  className="size-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                                  title="Ver detalle"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
