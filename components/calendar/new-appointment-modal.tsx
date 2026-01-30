@@ -11,6 +11,7 @@ import { Search, X, Calendar, Check, ChevronLeft, ChevronRight, Info, Bell } fro
 import { useAuth } from "@/lib/auth-context"
 import { getPatients } from "@/lib/api/patients"
 import { getServices } from "@/lib/api/services"
+import { createAppointment } from "@/lib/api/appointments"
 import type { Patient, Service } from "@/lib/supabase/client"
 
 interface NewAppointmentModalProps {
@@ -35,7 +36,7 @@ const timeSlots = [
   "06:00 PM",
 ]
 
-export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
+export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
   const { profile } = useAuth()
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -49,6 +50,8 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
   const [showPatientDropdown, setShowPatientDropdown] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
   const [calendarDate, setCalendarDate] = useState<Date>(new Date())
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Load patients and services when modal opens
   useEffect(() => {
@@ -170,6 +173,100 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
 
   const calendarDays = getCalendarDays()
   const isCurrentMonth = (date: Date) => date.getMonth() === calendarDate.getMonth()
+
+  // Convert time from AM/PM format to 24h format (HH:MM:SS)
+  const convertTo24h = (ampmTime: string): string => {
+    const [time, period] = ampmTime.split(' ')
+    let [hours, minutes] = time.split(':').map(Number)
+    
+    if (period === 'PM' && hours !== 12) {
+      hours += 12
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0
+    }
+    
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+  }
+
+  // Calculate end time (assume 1 hour duration for now)
+  const getEndTime = (startTime: string): string => {
+    const [hours, minutes] = startTime.split(':').map(Number)
+    const endHours = (hours + 1) % 24
+    return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+  }
+
+  const handleConfirmReservation = async () => {
+    setErrorMessage(null)
+    
+    // Validation
+    if (!selectedPatientId) {
+      setErrorMessage('Por favor selecciona un paciente')
+      return
+    }
+    if (!selectedServiceId) {
+      setErrorMessage('Por favor selecciona un servicio')
+      return
+    }
+    if (selectedDate === null) {
+      setErrorMessage('Por favor selecciona una fecha')
+      return
+    }
+    if (!selectedTime) {
+      setErrorMessage('Por favor selecciona una hora')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      
+      // Format appointment data
+      const appointmentDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), selectedDate)
+      const dateStr = appointmentDate.toISOString().split('T')[0]
+      const startTimeStr = convertTo24h(selectedTime)
+      const endTimeStr = getEndTime(startTimeStr)
+      
+      const depositAmount = parseFloat(deposit) || 0
+      const newAppointment = {
+        professional_id: profile!.id,
+        patient_id: selectedPatientId,
+        service_id: selectedServiceId,
+        appointment_date: dateStr,
+        start_time: startTimeStr,
+        end_time: endTimeStr,
+        is_video_call: false,
+        status: 'scheduled' as const,
+        notes: '',
+        deposit_amount: depositAmount,
+        deposit_paid: depositAmount > 0,
+        payment_status: depositAmount > 0 ? ('partial' as const) : ('unpaid' as const),
+      }
+      
+      await createAppointment(newAppointment)
+      
+      // Success - close modal and refresh appointments
+      if (onAppointmentCreated) {
+        onAppointmentCreated()
+      }
+      onOpenChange(false)
+    } catch (error: any) {
+      console.error('Error creating appointment:', error)
+      
+      // Extract the specific error message from Supabase error
+      let errorMsg = 'Error al crear la cita. Por favor intenta nuevamente.'
+      
+      if (error?.message) {
+        errorMsg = error.message
+      } else if (error?.error_description) {
+        errorMsg = error.error_description
+      } else if (typeof error === 'string') {
+        errorMsg = error
+      }
+      
+      setErrorMessage(errorMsg)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -412,6 +509,13 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
             </div>
             <Switch checked={reminderEnabled} onCheckedChange={setReminderEnabled} />
           </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="bg-red-100 border border-red-300 text-red-800 p-3 rounded-lg text-sm">
+              {errorMessage}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -420,12 +524,17 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
             variant="ghost"
             onClick={() => onOpenChange(false)}
             className="text-muted-foreground hover:text-foreground"
+            disabled={isSubmitting}
           >
             {'Cancelar'}
           </Button>
-          <Button className="gap-2 shadow-lg shadow-primary/20">
+          <Button 
+            onClick={handleConfirmReservation}
+            disabled={isSubmitting}
+            className="gap-2 shadow-lg shadow-primary/20"
+          >
             <Check className="size-4" />
-            {'Confirmar Reserva'}
+            {isSubmitting ? 'Creando...' : 'Confirmar Reserva'}
           </Button>
         </div>
       </DialogContent>
