@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,7 @@ interface CreatePatientModalProps {
 export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: CreatePatientModalProps) {
   const { profile } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     full_name: '',
@@ -51,11 +53,6 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
       // Log activity
       await logPatientCreated(profile.id, patient.id, patient.full_name)
 
-      toast({
-        title: '¡Paciente creado!',
-        description: `${patient.full_name} ha sido agregado exitosamente.`,
-      })
-
       // Reset form
       setFormData({
         full_name: '',
@@ -66,8 +63,27 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
         notes: '',
       })
 
+      // Close modal first
       onOpenChange(false)
-      onPatientCreated()
+
+      // Show toast
+      toast({
+        title: '¡Paciente creado con éxito!',
+        description: `${patient.full_name} ha sido agregado al sistema.`,
+        action: (
+          <button
+            onClick={() => router.push(`/pacientes/${patient.id}`)}
+            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700 transition-colors whitespace-nowrap"
+          >
+            Ver Detalle →
+          </button>
+        ),
+      })
+
+      // Delay the callback to allow toast to render
+      setTimeout(() => {
+        onPatientCreated()
+      }, 100)
     } catch (error: any) {
       let errorMessage = error.message || 'No se pudo crear el paciente'
 

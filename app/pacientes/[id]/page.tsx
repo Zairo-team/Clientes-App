@@ -143,7 +143,7 @@ export default function PatientDetailPage() {
 
       toast({
         title: 'Paciente eliminado',
-        description: `${patient.full_name} ha sido eliminado exitosamente.`,
+        description: `${patient.full_name} ha sido eliminado del sistema.`,
       })
 
       router.push('/pacientes')

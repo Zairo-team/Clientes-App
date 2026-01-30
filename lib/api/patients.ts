@@ -36,34 +36,34 @@ export async function getPatient(id: string) {
 /**
  * Create a new patient
  */
-export async function createPatient(patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>) {
+export async function createPatient(patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>): Promise<Patient> {
     const supabase = createClient()
 
     const { data, error } = await supabase
         .from('patients')
-        .insert([patient])
+        .insert([patient as any])
         .select()
         .single()
 
     if (error) throw error
-    return data
+    return data as Patient
 }
 
 /**
  * Update an existing patient
  */
-export async function updatePatient(id: string, updates: Partial<Patient>) {
+export async function updatePatient(id: string, updates: Partial<Patient>): Promise<Patient> {
     const supabase = createClient()
 
     const { data, error } = await supabase
         .from('patients')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single()
 
     if (error) throw error
-    return data
+    return data as Patient
 }
 
 /**
