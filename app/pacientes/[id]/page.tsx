@@ -274,14 +274,6 @@ export default function PatientDetailPage() {
                     <p className="text-muted-foreground font-medium text-sm">
                       {age ? `${age} años` : 'Edad no especificada'}
                     </p>
-                    <div className="mt-3 md:mt-4 flex gap-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium ${patient.status === 'active'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-muted text-muted-foreground'
-                        }`}>
-                        {patient.status === 'active' ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </div>
                   </div>
 
                   <div className="p-4 md:p-6 space-y-4 md:space-y-6">

@@ -11,7 +11,6 @@ export async function getPatients(professionalId: string) {
         .from('patients')
         .select('*')
         .eq('professional_id', professionalId)
-        .eq('status', 'active')
         .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -82,7 +81,10 @@ export async function deletePatient(id: string) {
 }
 
 /**
- * Search patients by name, email or phone
+ * Search patients by name, DNI, or email
+ * - Name: searches if query is contained anywhere (ilike %query%)
+ * - DNI: searches only if it starts with query (ilike query%)
+ * - Email: searches if query is contained anywhere (ilike %query%)
  */
 export async function searchPatients(professionalId: string, query: string) {
     const supabase = createClient()
@@ -91,7 +93,7 @@ export async function searchPatients(professionalId: string, query: string) {
         .from('patients')
         .select('*')
         .eq('professional_id', professionalId)
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`)
+        .or(`full_name.ilike.%${query}%,dni.ilike.${query}%,email.ilike.%${query}%`)
         .order('created_at', { ascending: false })
 
     if (error) throw error

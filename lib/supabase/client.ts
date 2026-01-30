@@ -22,7 +22,7 @@ export type Patient = {
   phone?: string | null
   date_of_birth?: string | null
   notes?: string | null
-  status: 'active' | 'inactive' | 'archived'
+  status?: 'active' | 'inactive' | 'archived' // Deprecated - no longer used
   created_at: string
   updated_at: string
   last_session_date?: string | null

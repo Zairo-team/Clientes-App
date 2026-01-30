@@ -139,7 +139,7 @@ export default function PacientesPage() {
                 <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
                 <Input
                   className="pl-9 md:pl-11 h-10 md:h-11 bg-muted border-none text-sm"
-                  placeholder="Buscar pacientes..."
+                  placeholder="Buscar por nombre, DNI o email..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                 />
