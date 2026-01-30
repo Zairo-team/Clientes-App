@@ -56,7 +56,7 @@ export default function PatientDetailPage() {
     if (profile?.id && patientId) {
       loadPatientData()
     }
-  }, [profile, patientId])
+  }, [profile?.id, patientId]) // Only re-run when profile ID or patient ID changes
 
   const loadPatientData = async () => {
     if (!profile?.id || !patientId) return

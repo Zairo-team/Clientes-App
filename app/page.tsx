@@ -27,7 +27,7 @@ export default function Dashboard() {
     if (profile?.id) {
       loadDashboardData()
     }
-  }, [profile])
+  }, [profile?.id]) // Only re-run when profile ID actually changes
 
   const loadDashboardData = async () => {
     if (!profile?.id) return

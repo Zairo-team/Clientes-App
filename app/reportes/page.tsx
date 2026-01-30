@@ -29,7 +29,7 @@ export default function ReportesPage() {
     if (profile?.id) {
       loadReportsData()
     }
-  }, [profile])
+  }, [profile?.id]) // Only re-run when profile ID actually changes
 
   const loadReportsData = async () => {
     if (!profile?.id) return
@@ -128,9 +128,9 @@ export default function ReportesPage() {
                 <div key={index} className="bg-card p-4 md:p-6 rounded-xl border shadow-sm">
                   <div className="flex items-center justify-between mb-3 md:mb-4">
                     <div className={`size-9 md:size-10 rounded-lg flex items-center justify-center ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                        stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-                          stat.color === 'amber' ? 'bg-amber-50 text-amber-600' :
-                            'bg-emerald-50 text-emerald-600'
+                      stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+                        stat.color === 'amber' ? 'bg-amber-50 text-amber-600' :
+                          'bg-emerald-50 text-emerald-600'
                       }`}>
                       <stat.icon className="size-4 md:size-5" />
                     </div>

@@ -33,7 +33,7 @@ export default function PacientesPage() {
     if (profile?.id) {
       loadPatients()
     }
-  }, [profile])
+  }, [profile?.id]) // Only re-run when profile ID actually changes
 
   const loadPatients = async () => {
     if (!profile?.id) return
