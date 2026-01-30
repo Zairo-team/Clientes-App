@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Eye, Mail, MessageCircle, Loader2, Filter, Download, MoreVertical, Edit, Trash2 } from 'lucide-react'
+import { Plus, Search, Eye, Mail, MessageCircle, Loader2, Filter, Download, MoreVertical, Edit, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { CreatePatientModal } from '@/components/patients/create-patient-modal'
 import { EditPatientModal } from '@/components/patients/edit-patient-modal'
@@ -28,6 +28,15 @@ export default function PacientesPage() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState({
+    hasEmail: false,
+    hasPhone: false,
+    ageMin: '',
+    ageMax: '',
+    dateFrom: '',
+    dateTo: ''
+  })
 
   useEffect(() => {
     if (profile?.id) {
@@ -64,6 +73,126 @@ export default function PacientesPage() {
     } catch (error) {
       console.error('Error searching patients:', error)
     }
+  }
+
+  const applyFilters = () => {
+    if (!profile?.id) return
+
+    loadPatients().then(() => {
+      // Apply filters in frontend
+      setPatients(prevPatients => {
+        let filtered = [...prevPatients]
+
+        // Filter by email
+        if (filters.hasEmail) {
+          filtered = filtered.filter(p => p.email && p.email.trim() !== '')
+        }
+
+        // Filter by phone
+        if (filters.hasPhone) {
+          filtered = filtered.filter(p => p.phone && p.phone.trim() !== '')
+        }
+
+        // Filter by age
+        if (filters.ageMin || filters.ageMax) {
+          filtered = filtered.filter(p => {
+            if (!p.date_of_birth) return false
+            const age = Math.floor((Date.now() - new Date(p.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+            const min = filters.ageMin ? parseInt(filters.ageMin) : 0
+            const max = filters.ageMax ? parseInt(filters.ageMax) : 999
+            return age >= min && age <= max
+          })
+        }
+
+        // Filter by registration date
+        if (filters.dateFrom) {
+          filtered = filtered.filter(p => new Date(p.created_at) >= new Date(filters.dateFrom))
+        }
+        if (filters.dateTo) {
+          filtered = filtered.filter(p => new Date(p.created_at) <= new Date(filters.dateTo))
+        }
+
+        return filtered
+      })
+    })
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      hasEmail: false,
+      hasPhone: false,
+      ageMin: '',
+      ageMax: '',
+      dateFrom: '',
+      dateTo: ''
+    })
+    setShowFilters(false)
+    loadPatients()
+  }
+
+  const getActiveFiltersCount = () => {
+    let count = 0
+    if (filters.hasEmail) count++
+    if (filters.hasPhone) count++
+    if (filters.ageMin || filters.ageMax) count++
+    if (filters.dateFrom || filters.dateTo) count++
+    return count
+  }
+
+  const removeFilter = (filterKey: string) => {
+    const newFilters = { ...filters }
+    if (filterKey === 'email') newFilters.hasEmail = false
+    if (filterKey === 'phone') newFilters.hasPhone = false
+    if (filterKey === 'age') {
+      newFilters.ageMin = ''
+      newFilters.ageMax = ''
+    }
+    if (filterKey === 'date') {
+      newFilters.dateFrom = ''
+      newFilters.dateTo = ''
+    }
+    setFilters(newFilters)
+
+    // Re-apply filters with the new filter state
+    if (!profile?.id) return
+
+    loadPatients().then(() => {
+      // Apply the NEW filters (not the old state)
+      setPatients(prevPatients => {
+        let filtered = [...prevPatients]
+
+        // Filter by email
+        if (newFilters.hasEmail) {
+          filtered = filtered.filter(p => p.email && p.email.trim() !== '')
+        }
+
+        // Filter by phone
+        if (newFilters.hasPhone) {
+          filtered = filtered.filter(p => p.phone && p.phone.trim() !== '')
+        }
+
+        // Filter by age
+        if (newFilters.ageMin || newFilters.ageMax) {
+          filtered = filtered.filter(p => {
+            if (!p.date_of_birth) return false
+            const age = Math.floor((Date.now() - new Date(p.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+            const min = newFilters.ageMin ? parseInt(newFilters.ageMin) : 0
+            const max = newFilters.ageMax ? parseInt(newFilters.ageMax) : 999
+            return age >= min && age <= max
+          })
+        }
+
+        // Filter by registration date
+        if (newFilters.dateFrom) {
+          filtered = filtered.filter(p => new Date(p.created_at) >= new Date(newFilters.dateFrom))
+        }
+        if (newFilters.dateTo) {
+          filtered = filtered.filter(p => new Date(p.created_at) <= new Date(newFilters.dateTo))
+        }
+
+        return filtered
+      })
+    })
   }
 
   const getInitials = (name: string) => {
@@ -145,9 +274,18 @@ export default function PacientesPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-transparent h-10 md:h-11 text-sm">
+                <Button
+                  variant="outline"
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-transparent h-10 md:h-11 text-sm relative"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
                   <Filter className="w-4 h-4" />
                   <span className="hidden sm:inline">{"Filtros"}</span>
+                  {getActiveFiltersCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                      {getActiveFiltersCount()}
+                    </span>
+                  )}
                 </Button>
                 <Button variant="outline" className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-transparent h-10 md:h-11 text-sm">
                   <Download className="w-4 h-4" />
@@ -155,6 +293,141 @@ export default function PacientesPage() {
                 </Button>
               </div>
             </div>
+
+            {/* Filter Chips */}
+            {getActiveFiltersCount() > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {filters.hasEmail && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    <span>Tiene email</span>
+                    <button onClick={() => removeFilter('email')} className="hover:bg-primary/20 rounded-full p-0.5">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {filters.hasPhone && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    <span>Tiene teléfono</span>
+                    <button onClick={() => removeFilter('phone')} className="hover:bg-primary/20 rounded-full p-0.5">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {(filters.ageMin || filters.ageMax) && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    <span>
+                      Edad: {filters.ageMin || '0'}-{filters.ageMax || '∞'}
+                    </span>
+                    <button onClick={() => removeFilter('age')} className="hover:bg-primary/20 rounded-full p-0.5">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {(filters.dateFrom || filters.dateTo) && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    <span>Registro: {filters.dateFrom || '...'} - {filters.dateTo || '...'}</span>
+                    <button onClick={() => removeFilter('date')} className="hover:bg-primary/20 rounded-full p-0.5">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Filter Panel */}
+            {showFilters && (
+              <div className="mt-2 p-4 bg-muted/50 rounded-xl border animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Age Filter */}
+                  <div>
+                    <label className="text-xs font-semibold text-foreground mb-2 block">Edad</label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.ageMin}
+                        onChange={(e) => setFilters({ ...filters, ageMin: e.target.value })}
+                        className="h-9 text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.ageMax}
+                        onChange={(e) => setFilters({ ...filters, ageMax: e.target.value })}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contact Filter */}
+                  <div>
+                    <label className="text-xs font-semibold text-foreground mb-2 block">Contacto</label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.hasEmail}
+                          onChange={(e) => setFilters({ ...filters, hasEmail: e.target.checked })}
+                          className="w-4 h-4 rounded border-input"
+                        />
+                        <span className="text-sm text-foreground">Tiene email</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.hasPhone}
+                          onChange={(e) => setFilters({ ...filters, hasPhone: e.target.checked })}
+                          className="w-4 h-4 rounded border-input"
+                        />
+                        <span className="text-sm text-foreground">Tiene teléfono</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Date Range Filter */}
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-semibold text-foreground mb-2 block">Fecha de registro</label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                        className="h-9 text-sm"
+                      />
+                      <span className="flex items-center text-muted-foreground">-</span>
+                      <Input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter Actions */}
+                <div className="flex gap-2 mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="flex-1"
+                  >
+                    Limpiar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      applyFilters()
+                      setShowFilters(false)
+                    }}
+                    className="flex-1"
+                  >
+                    Aplicar Filtros
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="max-w-[1200px] w-full mx-auto px-4 md:px-6 pb-8 md:pb-12">
@@ -334,7 +607,7 @@ export default function PacientesPage() {
           patient={selectedPatient}
           onPatientUpdated={loadPatients}
         />
-      </div>
-    </ProtectedRoute>
+      </div >
+    </ProtectedRoute >
   )
 }
