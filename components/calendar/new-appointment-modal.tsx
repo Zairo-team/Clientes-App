@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Search, X, Calendar, Check, ChevronLeft, ChevronRight, Info, Bell } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+import { getPatients } from "@/lib/api/patients"
+import { getServices } from "@/lib/api/services"
+import type { Patient, Service } from "@/lib/supabase/client"
 
 interface NewAppointmentModalProps {
   open: boolean
@@ -32,10 +36,96 @@ const timeSlots = [
 ]
 
 export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
+  const { profile } = useAuth()
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [deposit, setDeposit] = useState("0")
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
+  const [patientSearchText, setPatientSearchText] = useState("")
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false)
+  const [loadingData, setLoadingData] = useState(false)
+  const [calendarDate, setCalendarDate] = useState<Date>(new Date())
+
+  // Load patients and services when modal opens
+  useEffect(() => {
+    if (!open || !profile?.id) return
+    
+    const loadData = async () => {
+      try {
+        setLoadingData(true)
+        const [patientsData, servicesData] = await Promise.all([
+          getPatients(profile.id),
+          getServices(profile.id)
+        ])
+        setPatients(patientsData || [])
+        setServices(servicesData || [])
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+    
+    loadData()
+  }, [open, profile?.id])
+
+  // Initialize selected date/time when modal opens or props change
+  useEffect(() => {
+    if (!open) return
+    if (initialDate) {
+      const [year, month, day] = initialDate.split('-').map(Number)
+      const d = new Date(year, month - 1, day)
+      if (!isNaN(d.getTime())) {
+        setSelectedDate(d.getDate())
+        setCalendarDate(d)
+      }
+    } else {
+      setCalendarDate(new Date())
+    }
+    if (initialTime) {
+      const formatted = formatTimeToAmPm(initialTime)
+      if (formatted) setSelectedTime(formatted)
+    }
+  }, [open, initialDate, initialTime])
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedPatientId(null)
+      setSelectedServiceId(null)
+      setPatientSearchText("")
+      setShowPatientDropdown(false)
+      setDeposit("0")
+      if (!initialDate) setSelectedDate(null)
+      if (!initialTime) setSelectedTime(null)
+    }
+  }, [open, initialDate, initialTime])
+
+  // Filter patients based on search text
+  const filteredPatients = patientSearchText.trim()
+    ? patients.filter(p => 
+        p.full_name?.toLowerCase().includes(patientSearchText.toLowerCase()) ||
+        p.dni?.includes(patientSearchText)
+      )
+    : patients
+
+  const selectedPatient = selectedPatientId 
+    ? patients.find(p => p.id === selectedPatientId)
+    : null
+
+  const handleDepositChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value === '' || value === '-') {
+      setDeposit('0')
+    } else {
+      const num = parseFloat(value)
+      setDeposit(isNaN(num) || num < 0 ? '0' : value)
+    }
+  }
 
   // Format incoming time like "09:00" or "15:30" to modal slot format "09:00 AM"
   const formatTimeToAmPm = (time?: string) => {
@@ -47,18 +137,39 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
     return `${String(hour12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${period}`
   }
 
-  // Initialize selected date/time when modal opens or props change
-  useEffect(() => {
-    if (!open) return
-    if (initialDate) {
-      const d = new Date(initialDate)
-      if (!isNaN(d.getTime())) setSelectedDate(d.getDate())
+  // Generate calendar days for the current calendar month
+  const getCalendarDays = () => {
+    const year = calendarDate.getFullYear()
+    const month = calendarDate.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const offset = (firstDay.getDay() + 6) % 7 // convert Sunday=0 to Monday=0
+    const start = new Date(firstDay)
+    start.setDate(start.getDate() - offset)
+    
+    const days = []
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      days.push(d)
     }
-    if (initialTime) {
-      const formatted = formatTimeToAmPm(initialTime)
-      if (formatted) setSelectedTime(formatted)
-    }
-  }, [open, initialDate, initialTime])
+    return days
+  }
+
+  const handlePrevMonth = () => {
+    setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+  }
+
+  const handleSelectDay = (date: Date) => {
+    setSelectedDate(date.getDate())
+    setCalendarDate(date)
+  }
+
+  const calendarDays = getCalendarDays()
+  const isCurrentMonth = (date: Date) => date.getMonth() === calendarDate.getMonth()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,12 +201,56 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {'Paciente'}
               </Label>
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground size-4 group-focus-within:text-primary transition-colors" />
-                <Input
-                  placeholder="Seleccionar paciente..."
-                  className="pl-11 h-12 bg-background"
-                />
+              <div className="relative">
+                <div className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground size-4 group-focus-within:text-primary transition-colors z-10" />
+                  <Input
+                    placeholder="Buscar paciente..."
+                    className="pl-11 h-12 bg-background"
+                    value={selectedPatient ? selectedPatient.full_name || '' : patientSearchText}
+                    onChange={(e) => {
+                      setPatientSearchText(e.target.value)
+                      setSelectedPatientId(null)
+                      setShowPatientDropdown(true)
+                    }}
+                    onFocus={() => setShowPatientDropdown(true)}
+                  />
+                  {selectedPatientId && (
+                    <button
+                      onClick={() => {
+                        setSelectedPatientId(null)
+                        setPatientSearchText("")
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+                {showPatientDropdown && !selectedPatientId && patientSearchText.trim().length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-md z-50 max-h-48 overflow-y-auto">
+                    {loadingData ? (
+                      <div className="p-3 text-xs text-muted-foreground">Cargando...</div>
+                    ) : filteredPatients.length > 0 ? (
+                      filteredPatients.map((patient) => (
+                        <button
+                          key={patient.id}
+                          onClick={() => {
+                            setSelectedPatientId(patient.id)
+                            setShowPatientDropdown(false)
+                            setPatientSearchText("")
+                          }}
+                          className="w-full text-left p-3 hover:bg-muted transition-colors border-b last:border-0 text-sm"
+                        >
+                          <div className="font-semibold">{patient.full_name}</div>
+                          {patient.dni && <div className="text-xs text-muted-foreground">DNI: {patient.dni}</div>}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-muted-foreground">No se encontraron pacientes</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -103,15 +258,22 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
               <Label htmlFor="service" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {'Servicio'}
               </Label>
-              <Select>
+              <Select value={selectedServiceId || ""} onValueChange={setSelectedServiceId}>
                 <SelectTrigger id="service" className="h-12 bg-background">
                   <SelectValue placeholder="Elegir servicio..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="terapia">{'Terapia Individual'}</SelectItem>
-                  <SelectItem value="consulta">{'Consulta Inicial'}</SelectItem>
-                  <SelectItem value="seguimiento">{'Seguimiento Clínico'}</SelectItem>
-                  <SelectItem value="evaluacion">{'Evaluación Diagnóstica'}</SelectItem>
+                  {loadingData ? (
+                    <div className="p-3 text-xs text-muted-foreground">Cargando servicios...</div>
+                  ) : services.length > 0 ? (
+                    services.map((service) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-3 text-xs text-muted-foreground">No hay servicios disponibles</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -135,9 +297,11 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
                   <Input
                     type="number"
                     value={deposit}
-                    onChange={(e) => setDeposit(e.target.value)}
+                    onChange={handleDepositChange}
                     placeholder="0.00"
                     className="pl-8 h-11 bg-background font-bold"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -162,12 +326,12 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
               </Label>
               <div className="bg-muted/50 border border-border rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-4 px-1">
-                  <span className="text-sm font-bold text-foreground">{'Octubre 2023'}</span>
+                  <span className="text-sm font-bold text-foreground">{calendarDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</span>
                   <div className="flex gap-1">
-                    <button className="size-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground">
+                    <button onClick={handlePrevMonth} className="size-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground">
                       <ChevronLeft className="size-4" />
                     </button>
-                    <button className="size-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground">
+                    <button onClick={handleNextMonth} className="size-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground">
                       <ChevronRight className="size-4" />
                     </button>
                   </div>
@@ -186,27 +350,26 @@ export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTi
 
                 {/* Calendar Days */}
                 <div className="grid grid-cols-7 gap-1">
-                  {[25, 26, 27, 28, 29, 30].map((day) => (
-                    <div
-                      key={`prev-${day}`}
-                      className="aspect-square flex items-center justify-center text-xs text-muted-foreground/30"
-                    >
-                      {day}
-                    </div>
-                  ))}
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((day) => (
-                    <button
-                      key={day}
-                      onClick={() => setSelectedDate(day)}
-                      className={`aspect-square flex items-center justify-center text-xs font-semibold rounded-lg transition-all ${
-                        selectedDate === day
-                          ? "bg-primary text-white"
-                          : "hover:bg-background text-foreground"
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
+                  {calendarDays.map((day, idx) => {
+                    const isCurrent = isCurrentMonth(day)
+                    const isSelected = selectedDate === day.getDate() && isCurrent
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectDay(day)}
+                        className={`aspect-square flex items-center justify-center text-xs font-semibold rounded-lg transition-all ${
+                          !isCurrent
+                            ? 'text-muted-foreground/30 cursor-default'
+                            : isSelected
+                            ? 'bg-primary text-white'
+                            : 'hover:bg-background text-foreground'
+                        }`}
+                        disabled={!isCurrent}
+                      >
+                        {day.getDate()}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>

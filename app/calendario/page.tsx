@@ -325,7 +325,13 @@ export default function CalendarioPage() {
 
         <NewAppointmentModal
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open)
+            if (!open) {
+              setModalInitialDate(undefined)
+              setModalInitialTime(undefined)
+            }
+          }}
           onAppointmentCreated={loadAppointments}
           initialDate={modalInitialDate}
           initialTime={modalInitialTime}
