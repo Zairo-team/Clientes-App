@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Eye, Mail, MessageCircle, Loader2, Filter, Download, MoreVertical, Edit, Trash2, X } from 'lucide-react'
+import { Plus, Search, Eye, Mail, MessageCircle, Loader2, Filter, ArrowUpDown, ArrowUp, ArrowDown, MoreVertical, Edit, Trash2, X, Calendar } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { CreatePatientModal } from '@/components/patients/create-patient-modal'
 import { EditPatientModal } from '@/components/patients/edit-patient-modal'
@@ -37,6 +37,8 @@ export default function PacientesPage() {
     dateFrom: '',
     dateTo: ''
   })
+  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'date-asc' | 'date-desc' | 'dni-asc' | 'dni-desc' | 'age-asc' | 'age-desc'>('date-desc')
+  const [showSortMenu, setShowSortMenu] = useState(false)
 
   useEffect(() => {
     if (profile?.id) {
@@ -137,6 +139,48 @@ export default function PacientesPage() {
     if (filters.ageMin || filters.ageMax) count++
     if (filters.dateFrom || filters.dateTo) count++
     return count
+  }
+
+  const sortPatients = (patientsToSort: Patient[]) => {
+    const sorted = [...patientsToSort]
+    switch (sortBy) {
+      case 'name-asc': return sorted.sort((a, b) => a.full_name.localeCompare(b.full_name))
+      case 'name-desc': return sorted.sort((a, b) => b.full_name.localeCompare(a.full_name))
+      case 'date-asc': return sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      case 'date-desc': return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      case 'dni-asc': return sorted.sort((a, b) => (a.dni || '').localeCompare(b.dni || ''))
+      case 'dni-desc': return sorted.sort((a, b) => (b.dni || '').localeCompare(a.dni || ''))
+      case 'age-asc': return sorted.sort((a, b) => {
+        const ageA = a.date_of_birth ? Math.floor((Date.now() - new Date(a.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 999
+        const ageB = b.date_of_birth ? Math.floor((Date.now() - new Date(b.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : 999
+        return ageA - ageB
+      })
+      case 'age-desc': return sorted.sort((a, b) => {
+        const ageA = a.date_of_birth ? Math.floor((Date.now() - new Date(a.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : -1
+        const ageB = b.date_of_birth ? Math.floor((Date.now() - new Date(b.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : -1
+        return ageB - ageA
+      })
+      default: return sorted
+    }
+  }
+
+  const handleSort = (newSortBy: typeof sortBy) => {
+    setSortBy(newSortBy)
+    setShowSortMenu(false)
+    setPatients(prevPatients => sortPatients(prevPatients))
+  }
+
+  const getSortLabel = () => {
+    switch (sortBy) {
+      case 'name-asc': return 'Nombre A-Z'
+      case 'name-desc': return 'Nombre Z-A'
+      case 'date-asc': return 'Más antiguos'
+      case 'date-desc': return 'Más recientes'
+      case 'dni-asc': return 'DNI ascendente'
+      case 'dni-desc': return 'DNI descendente'
+      case 'age-asc': return 'Menor edad'
+      case 'age-desc': return 'Mayor edad'
+    }
   }
 
   const removeFilter = (filterKey: string) => {
@@ -287,10 +331,45 @@ export default function PacientesPage() {
                     </span>
                   )}
                 </Button>
-                <Button variant="outline" className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-transparent h-10 md:h-11 text-sm">
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">{"Exportar"}</span>
-                </Button>
+                <DropdownMenu open={showSortMenu} onOpenChange={setShowSortMenu}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-transparent h-10 md:h-11 text-sm">
+                      <ArrowUpDown className="w-4 h-4" />
+                      <span className="hidden sm:inline">{getSortLabel()}</span>
+                      <span className="sm:hidden">Ordenar</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Ordenar por</div>
+                    <DropdownMenuItem onClick={() => handleSort('name-asc')} className="cursor-pointer">
+                      <ArrowUp className="w-4 h-4 mr-2" />Nombre A-Z
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSort('name-desc')} className="cursor-pointer">
+                      <ArrowDown className="w-4 h-4 mr-2" />Nombre Z-A
+                    </DropdownMenuItem>
+                    <div className="h-px bg-border my-1" />
+                    <DropdownMenuItem onClick={() => handleSort('date-desc')} className="cursor-pointer">
+                      <Calendar className="w-4 h-4 mr-2" />Más recientes
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSort('date-asc')} className="cursor-pointer">
+                      <Calendar className="w-4 h-4 mr-2" />Más antiguos
+                    </DropdownMenuItem>
+                    <div className="h-px bg-border my-1" />
+                    <DropdownMenuItem onClick={() => handleSort('dni-asc')} className="cursor-pointer">
+                      <ArrowUp className="w-4 h-4 mr-2" />DNI Ascendente
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSort('dni-desc')} className="cursor-pointer">
+                      <ArrowDown className="w-4 h-4 mr-2" />DNI Descendente
+                    </DropdownMenuItem>
+                    <div className="h-px bg-border my-1" />
+                    <DropdownMenuItem onClick={() => handleSort('age-asc')} className="cursor-pointer">
+                      <ArrowUp className="w-4 h-4 mr-2" />Menor edad
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSort('age-desc')} className="cursor-pointer">
+                      <ArrowDown className="w-4 h-4 mr-2" />Mayor edad
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
