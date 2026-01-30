@@ -364,7 +364,7 @@ export default function PatientDetailPage() {
                             </div>
 
                             {/* Session Card */}
-                            <div className="ml-16 bg-card border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="ml-16 bg-card border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                               <div className="flex items-start justify-between mb-2">
                                 <div>
                                   <h4 className="text-sm font-bold text-foreground">
@@ -385,18 +385,20 @@ export default function PatientDetailPage() {
 
                               {appointment.notes && (
                                 <div className="mt-3 pt-3 border-t">
-                                  <p className="text-xs text-foreground leading-relaxed">
+                                  <p className="text-xs text-foreground leading-relaxed line-clamp-2">
                                     {appointment.notes}
                                   </p>
                                 </div>
                               )}
 
-                              {appointment.notes && (
-                                <Button variant="link" className="mt-2 p-0 h-auto text-xs text-primary hover:text-primary/80">
-                                  <Eye className="w-3 h-3 mr-1" />
-                                  Ver Notas
-                                </Button>
-                              )}
+                              <Button
+                                variant="link"
+                                className="mt-2 p-0 h-auto text-xs text-primary hover:text-primary/80"
+                                onClick={() => router.push(`/pacientes/${patient.id}/sesiones/${appointment.id}`)}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Ver Detalles
+                              </Button>
                             </div>
                           </div>
                         )

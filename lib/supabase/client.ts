@@ -55,6 +55,13 @@ export type Appointment = {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no_show' | 'rescheduled'
   notes?: string | null
   cancellation_reason?: string | null
+  // Payment fields
+  total_amount?: number | null
+  deposit_amount?: number | null
+  deposit_paid?: boolean | null
+  remaining_balance?: number | null
+  balance_paid?: boolean | null
+  payment_status?: 'unpaid' | 'partial' | 'paid' | null
   created_at: string
   updated_at: string
 }
