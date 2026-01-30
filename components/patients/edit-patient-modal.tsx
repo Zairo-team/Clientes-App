@@ -63,7 +63,7 @@ export function EditPatientModal({ open, onOpenChange, patient, onPatientUpdated
 
             toast({
                 title: '¡Paciente actualizado!',
-                description: `Los datos de ${formData.full_name} han sido actualizados exitosamente.`,
+                description: `Los cambios en ${formData.full_name} se guardaron correctamente.`,
             })
 
             onOpenChange(false)

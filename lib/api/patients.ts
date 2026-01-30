@@ -11,7 +11,6 @@ export async function getPatients(professionalId: string) {
         .from('patients')
         .select('*')
         .eq('professional_id', professionalId)
-        .eq('status', 'active')
         .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -37,34 +36,34 @@ export async function getPatient(id: string) {
 /**
  * Create a new patient
  */
-export async function createPatient(patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>) {
+export async function createPatient(patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>): Promise<Patient> {
     const supabase = createClient()
 
     const { data, error } = await supabase
         .from('patients')
-        .insert([patient])
+        .insert([patient as any])
         .select()
         .single()
 
     if (error) throw error
-    return data
+    return data as Patient
 }
 
 /**
  * Update an existing patient
  */
-export async function updatePatient(id: string, updates: Partial<Patient>) {
+export async function updatePatient(id: string, updates: Partial<Patient>): Promise<Patient> {
     const supabase = createClient()
 
     const { data, error } = await supabase
         .from('patients')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single()
 
     if (error) throw error
-    return data
+    return data as Patient
 }
 
 /**
@@ -82,7 +81,10 @@ export async function deletePatient(id: string) {
 }
 
 /**
- * Search patients by name, email or phone
+ * Search patients by name, DNI, or email
+ * - Name: searches if query is contained anywhere (ilike %query%)
+ * - DNI: searches only if it starts with query (ilike query%)
+ * - Email: searches if query is contained anywhere (ilike %query%)
  */
 export async function searchPatients(professionalId: string, query: string) {
     const supabase = createClient()
@@ -91,7 +93,7 @@ export async function searchPatients(professionalId: string, query: string) {
         .from('patients')
         .select('*')
         .eq('professional_id', professionalId)
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`)
+        .or(`full_name.ilike.%${query}%,dni.ilike.${query}%,email.ilike.%${query}%`)
         .order('created_at', { ascending: false })
 
     if (error) throw error

@@ -30,7 +30,7 @@ export default function ServiciosPage() {
     if (profile?.id) {
       loadServices()
     }
-  }, [profile])
+  }, [profile?.id]) // Only re-run when profile ID actually changes
 
   const loadServices = async () => {
     if (!profile?.id) return
