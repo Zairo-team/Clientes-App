@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,12 @@ import { Search, X, Calendar, Check, ChevronLeft, ChevronRight, Info, Bell } fro
 interface NewAppointmentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onAppointmentCreated?: () => void
+}
+
+interface NewAppointmentModalExtraProps {
+  initialDate?: string
+  initialTime?: string
 }
 
 const timeSlots = [
@@ -25,11 +31,34 @@ const timeSlots = [
   "06:00 PM",
 ]
 
-export function NewAppointmentModal({ open, onOpenChange }: NewAppointmentModalProps) {
+export function NewAppointmentModal({ open, onOpenChange, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [deposit, setDeposit] = useState("0")
+
+  // Format incoming time like "09:00" or "15:30" to modal slot format "09:00 AM"
+  const formatTimeToAmPm = (time?: string) => {
+    if (!time) return null
+    const [hh, mm] = time.split(":").map(Number)
+    if (isNaN(hh) || isNaN(mm)) return null
+    const period = hh >= 12 ? 'PM' : 'AM'
+    const hour12 = hh % 12 === 0 ? 12 : hh % 12
+    return `${String(hour12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${period}`
+  }
+
+  // Initialize selected date/time when modal opens or props change
+  useEffect(() => {
+    if (!open) return
+    if (initialDate) {
+      const d = new Date(initialDate)
+      if (!isNaN(d.getTime())) setSelectedDate(d.getDate())
+    }
+    if (initialTime) {
+      const formatted = formatTimeToAmPm(initialTime)
+      if (formatted) setSelectedTime(formatted)
+    }
+  }, [open, initialDate, initialTime])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
