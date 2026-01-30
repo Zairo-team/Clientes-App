@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Calendar as CalendarIcon, Plus, Phone, Mail, Award as IdCard, Loader2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Calendar as CalendarIcon, Plus, Phone, Mail, Award as IdCard, Loader2, Trash2, Check, Clock, X, AlertCircle, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { ScheduleAppointmentModal } from '@/components/patients/schedule-appointment-modal'
 import { NewSessionModal } from '@/components/patients/new-session-modal'
@@ -14,7 +14,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { deletePatient } from '@/lib/api/patients'
 import { useToast } from '@/hooks/use-toast'
-import type { Patient, Appointment, Sale } from '@/lib/supabase/client'
+import type { Patient, Appointment } from '@/lib/supabase/client'
+import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,9 +31,7 @@ type AppointmentWithService = Appointment & {
   service: { name: string; color: string } | null
 }
 
-type SaleWithService = Sale & {
-  service: { name: string } | null
-}
+
 
 export default function PatientDetailPage() {
   const { profile } = useAuth()
@@ -41,7 +40,6 @@ export default function PatientDetailPage() {
   const params = useParams()
   const patientId = params.id as string
 
-  const [activeTab, setActiveTab] = useState('timeline')
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [showNewSessionModal, setShowNewSessionModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -50,13 +48,12 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true)
   const [patient, setPatient] = useState<Patient | null>(null)
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([])
-  const [sales, setSales] = useState<SaleWithService[]>([])
 
   useEffect(() => {
     if (profile?.id && patientId) {
       loadPatientData()
     }
-  }, [profile, patientId])
+  }, [profile?.id, patientId]) // Only re-run when profile ID or patient ID changes
 
   const loadPatientData = async () => {
     if (!profile?.id || !patientId) return
@@ -104,24 +101,7 @@ export default function PatientDetailPage() {
         setAppointments(appointmentsData as AppointmentWithService[])
       }
 
-      // Load sales/billing
-      const { data: salesData, error: salesError } = await supabase
-        .from('sales')
-        .select(`
-          *,
-          service:services(name)
-        `)
-        .eq('patient_id', patientId)
-        .eq('professional_id', profile.id)
-        .order('service_date', { ascending: false })
-        .limit(10)
 
-      if (salesError) {
-        console.error('Sales error:', salesError)
-        // Don't throw, just log - sales are optional
-      } else {
-        setSales(salesData as SaleWithService[])
-      }
     } catch (error: any) {
       console.error('Error loading patient data:', error)
       toast({
@@ -143,7 +123,7 @@ export default function PatientDetailPage() {
 
       toast({
         title: 'Paciente eliminado',
-        description: `${patient.full_name} ha sido eliminado exitosamente.`,
+        description: `${patient.full_name} ha sido eliminado del sistema.`,
       })
 
       router.push('/pacientes')
@@ -213,7 +193,7 @@ export default function PatientDetailPage() {
     )
   }
 
-  const age = getAge(patient.date_of_birth)
+  const age = getAge(patient.date_of_birth ?? null)
 
   return (
     <ProtectedRoute>
@@ -274,14 +254,6 @@ export default function PatientDetailPage() {
                     <p className="text-muted-foreground font-medium text-sm">
                       {age ? `${age} años` : 'Edad no especificada'}
                     </p>
-                    <div className="mt-3 md:mt-4 flex gap-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium ${patient.status === 'active'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-muted text-muted-foreground'
-                        }`}>
-                        {patient.status === 'active' ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </div>
                   </div>
 
                   <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -354,110 +326,88 @@ export default function PatientDetailPage() {
               </aside>
 
               <div className="lg:col-span-8 flex flex-col gap-4 md:gap-6">
-                <div className="bg-card p-1 md:p-1.5 rounded-xl border flex shadow-sm overflow-x-auto">
-                  <button
-                    onClick={() => setActiveTab('timeline')}
-                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${activeTab === 'timeline'
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-primary'
-                      }`}
-                  >
-                    <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="hidden sm:inline">Historial</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('facturacion')}
-                    className={`flex-1 min-w-[60px] flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all ${activeTab === 'facturacion'
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-primary'
-                      }`}
-                  >
-                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span className="hidden sm:inline">Pagos</span>
-                  </button>
-                </div>
+                <div className="bg-card rounded-xl border p-4 md:p-6 shadow-sm">
+                  <div className="flex items-center gap-2 mb-6">
+                    <CalendarIcon className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-bold text-foreground">Historial / Timeline de Sesiones</h3>
+                  </div>
 
-                {activeTab === 'timeline' && (
-                  <div className="space-y-4">
-                    {appointments.length === 0 ? (
-                      <div className="bg-card rounded-xl border p-12 text-center">
-                        <p className="text-muted-foreground text-sm">No hay citas registradas</p>
-                      </div>
-                    ) : (
-                      appointments.map((appointment) => {
+                  {appointments.length === 0 ? (
+                    <div className="text-center py-12">
+                      <CalendarIcon className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">No hay sesiones registradas</p>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {appointments.map((appointment, index) => {
                         const statusBadge = getStatusBadge(appointment.status)
+                        const isCompleted = appointment.status === 'completed'
+                        const isScheduled = appointment.status === 'scheduled'
+                        const isCancelled = appointment.status === 'cancelled'
+                        const isNoShow = appointment.status === 'no_show'
+
+                        const dotColor = isCompleted ? 'bg-emerald-500' : isScheduled ? 'bg-orange-500' : isCancelled ? 'bg-red-500' : 'bg-gray-500'
+                        const badgeColor = isCompleted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : isScheduled ? 'bg-orange-100 text-orange-700 border-orange-200' : isCancelled ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-700 border-gray-200'
+
                         return (
-                          <div key={appointment.id} className="bg-card rounded-xl border p-4 md:p-6 shadow-sm">
-                            <div className="flex flex-col gap-3">
-                              <div className="flex items-start justify-between">
+                          <div key={appointment.id} className="relative pb-8">
+                            {/* Timeline Line */}
+                            {index !== appointments.length - 1 && (
+                              <div className="absolute left-4 top-10 bottom-0 w-0.5 bg-border z-0" />
+                            )}
+
+                            {/* Timeline Dot */}
+                            <div className="absolute left-0 top-2 z-10">
+                              <div className={`size-9 rounded-full flex items-center justify-center ${dotColor} shadow-md`}>
+                                <div className="size-3.5 rounded-full bg-white" />
+                              </div>
+                            </div>
+
+                            {/* Session Card */}
+                            <div className="ml-16 bg-card border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                              <div className="flex items-start justify-between mb-2">
                                 <div>
-                                  <h4 className="text-sm md:text-base font-bold text-foreground">
-                                    {appointment.service?.name || 'Servicio'}
+                                  <h4 className="text-sm font-bold text-foreground">
+                                    Sesión de {appointment.service?.name || 'Psicoterapia'}
                                   </h4>
-                                  <p className="text-muted-foreground text-xs md:text-sm mt-1">
+                                  <p className="text-xs text-muted-foreground mt-1">
                                     {new Date(appointment.appointment_date).toLocaleDateString('es-AR', {
-                                      day: 'numeric',
+                                      day: '2-digit',
                                       month: 'long',
                                       year: 'numeric'
                                     })} • {appointment.start_time.substring(0, 5)} - {appointment.end_time.substring(0, 5)}
                                   </p>
                                 </div>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusBadge.color}`}>
+                                <Badge className={`${badgeColor} text-[10px] font-bold uppercase px-2 py-1`}>
                                   {statusBadge.label}
-                                </span>
+                                </Badge>
                               </div>
+
                               {appointment.notes && (
-                                <div className="bg-muted/50 p-3 rounded-lg text-xs text-foreground border">
-                                  {appointment.notes}
+                                <div className="mt-3 pt-3 border-t">
+                                  <p className="text-xs text-foreground leading-relaxed line-clamp-2">
+                                    {appointment.notes}
+                                  </p>
                                 </div>
                               )}
+
+                              <Button
+                                variant="link"
+                                className="mt-2 p-0 h-auto text-xs text-primary hover:text-primary/80"
+                                onClick={() => router.push(`/pacientes/${patient.id}/sesiones/${appointment.id}`)}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Ver Detalles
+                              </Button>
                             </div>
                           </div>
                         )
-                      })
-                    )}
-                  </div>
-                )}
+                      })}
+                    </div>
+                  )}
 
-                {activeTab === 'facturacion' && (
-                  <div className="space-y-4">
-                    {sales.length === 0 ? (
-                      <div className="bg-card rounded-xl border p-12 text-center">
-                        <p className="text-muted-foreground text-sm">No hay ventas registradas</p>
-                      </div>
-                    ) : (
-                      <div className="bg-card rounded-xl border overflow-hidden">
-                        <div className="divide-y">
-                          {sales.map((sale) => (
-                            <div key={sale.id} className="p-4 hover:bg-muted/30 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground">{sale.service_name}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {new Date(sale.service_date).toLocaleDateString('es-AR')}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-bold text-foreground">
-                                    ${sale.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                                  </p>
-                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium mt-1 ${sale.payment_status === 'paid'
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : 'bg-amber-100 text-amber-700'
-                                    }`}>
-                                    {sale.payment_status === 'paid' ? 'Pagado' : 'Pendiente'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+
+                </div>
               </div>
             </div>
           </div>
