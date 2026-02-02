@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon } from 'lucide-react'
 import { NewAppointmentModal } from '@/components/calendar/new-appointment-modal'
 import { AppointmentDetailModal } from '@/components/calendar/appointment-detail-modal'
+import { EditAppointmentModal } from '@/components/calendar/edit-appointment-modal'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
 import { getAppointments } from '@/lib/api/appointments'
@@ -27,6 +28,8 @@ export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithRelations | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [appointmentToEdit, setAppointmentToEdit] = useState<AppointmentWithRelations | null>(null)
 
   useEffect(() => {
     if (profile?.id) {
@@ -353,8 +356,27 @@ export default function CalendarioPage() {
           appointment={selectedAppointment}
           onAppointmentUpdated={loadAppointments}
           onEdit={(apt) => {
-            // Could implement edit functionality here
-            console.log('Edit appointment:', apt)
+            setAppointmentToEdit(apt)
+            setEditModalOpen(true)
+            // keep detail modal open so edits can be reflected in hot-update
+          }}
+        />
+
+        <EditAppointmentModal
+          open={editModalOpen}
+          onOpenChange={(open) => setEditModalOpen(open)}
+          appointment={appointmentToEdit}
+          onUpdated={(updated) => {
+            // Refresh list and update selected appointment in-place so detail shows changes immediately
+            loadAppointments()
+            setSelectedAppointment((prev) => {
+              if (!prev) return prev
+              if (prev.id === updated.id) return { ...prev, ...updated }
+              return prev
+            })
+            setAppointmentToEdit(null)
+            setEditModalOpen(false)
+            setDetailModalOpen(true)
           }}
         />
       </div>

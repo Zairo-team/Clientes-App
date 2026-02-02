@@ -76,7 +76,8 @@ export async function getUpcomingAppointments(professionalId: string, limit: num
     return data
 }
 
-import { logAppointmentCreated } from './activity'
+import { logAppointmentCreated, logPaymentReceived } from './activity'
+import { createSale } from './sales'
 
 /**
  * Create a new appointment
@@ -105,6 +106,72 @@ export async function createAppointment(
             patientNameForLog,
             appointment.appointment_date
         ).catch(err => console.error('Error logging appointment creation:', err))
+    }
+
+    // If a deposit was provided at creation, persist it as a Sale so it appears in payment history
+    try {
+        const deposit = (appointment as any).deposit_amount || 0
+        if (deposit && deposit > 0) {
+            // Try to fetch service name for the sale
+            const supabase = createClient()
+            let serviceName = 'Servicio'
+            if (appointment.service_id) {
+                const { data: svc } = await supabase.from('services').select('name').eq('id', appointment.service_id).single()
+                if (svc && (svc as any).name) serviceName = (svc as any).name
+            }
+
+            const sale = await createSale({
+                professional_id: appointment.professional_id,
+                patient_id: appointment.patient_id,
+                service_id: appointment.service_id,
+                appointment_id: data.id,
+                service_name: serviceName,
+                service_date: appointment.appointment_date,
+                amount: deposit,
+                payment_status: 'paid',
+                payment_date: appointment.appointment_date,
+                notes: 'Depósito/Adelanto al crear cita',
+            })
+
+            // Log payment activity
+            logPaymentReceived(
+                appointment.professional_id,
+                sale.id,
+                appointment.patient_id,
+                patientNameForLog || '',
+                deposit
+            ).catch(err => console.error('Error logging deposit payment:', err))
+
+            // Recalculate remaining balance for this appointment considering sales
+            try {
+                // Sum sales for this appointment
+                const { data: salesData, error: salesError } = await supabase
+                    .from('sales')
+                    .select('amount')
+                    .eq('appointment_id', data.id)
+
+                if (!salesError) {
+                    const totalPaidInSales = (salesData || []).reduce((sum: number, s: any) => sum + Number(s.amount), 0)
+                    const totalAmount = (appointment as any).total_amount || 0
+                    // If there are sales, treat them as authoritative
+                    const remaining = totalPaidInSales > 0 ? Math.max(0, totalAmount - totalPaidInSales) : Math.max(0, totalAmount - ((appointment as any).deposit_amount || 0))
+
+                    await supabase
+                        .from('appointments')
+                        .update({
+                            remaining_balance: remaining,
+                            balance_paid: remaining <= 0,
+                            payment_status: remaining <= 0 ? 'paid' : (totalPaidInSales > 0 || ((appointment as any).deposit_amount || 0) > 0) ? 'partial' : 'unpaid',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', data.id)
+                }
+            } catch (err) {
+                console.error('Error recalculating remaining after creating sale:', err)
+            }
+        }
+    } catch (err) {
+        console.error('Error creating deposit sale after appointment creation:', err)
     }
 
     return data

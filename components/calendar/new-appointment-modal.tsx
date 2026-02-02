@@ -18,6 +18,7 @@ interface NewAppointmentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAppointmentCreated?: () => void
+  initialPatientId?: string
 }
 
 interface NewAppointmentModalExtraProps {
@@ -36,7 +37,7 @@ const timeSlots = [
   "06:00 PM",
 ]
 
-export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
+export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, initialPatientId, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
   const { profile } = useAuth()
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -92,6 +93,13 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
     if (initialTime) {
       const formatted = formatTimeToAmPm(initialTime)
       if (formatted) setSelectedTime(formatted)
+    }
+
+    // If modal opened with an initialPatientId, pre-select that patient
+    if (initialPatientId) {
+      setSelectedPatientId(initialPatientId)
+      setPatientSearchText("")
+      setShowPatientDropdown(false)
     }
   }, [open, initialDate, initialTime])
 
@@ -188,11 +196,16 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
   }
 
-  // Calculate end time (assume 1 hour duration for now)
-  const getEndTime = (startTime: string): string => {
-    const [hours, minutes] = startTime.split(':').map(Number)
-    const endHours = (hours + 1) % 24
-    return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+  // Calculate end time using service duration (minutes)
+  const getEndTime = (startTime: string, durationMinutes: number = 60): string => {
+    const parts = startTime.split(':').map(Number)
+    const hours = parts[0] ?? 0
+    const minutes = parts[1] ?? 0
+    const startTotal = hours * 60 + minutes
+    const endTotal = (startTotal + durationMinutes) % (24 * 60)
+    const endHours = Math.floor(endTotal / 60)
+    const endMins = endTotal % 60
+    return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`
   }
 
   const handleConfirmReservation = async () => {
@@ -223,9 +236,13 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
       const appointmentDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), selectedDate)
       const dateStr = appointmentDate.toISOString().split('T')[0]
       const startTimeStr = convertTo24h(selectedTime)
-      const endTimeStr = getEndTime(startTimeStr)
-      
+      const service = services.find(s => s.id === selectedServiceId)
+      const duration = service?.duration_minutes ?? 60
+      const endTimeStr = getEndTime(startTimeStr, duration)
+
       const depositAmount = parseFloat(deposit) || 0
+      const totalAmt = service?.price ?? 0
+      const remaining = Math.max(0, totalAmt - depositAmount)
       const newAppointment = {
         professional_id: profile!.id,
         patient_id: selectedPatientId,
@@ -236,9 +253,12 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
         is_video_call: false,
         status: 'scheduled' as const,
         notes: '',
+        total_amount: service?.price ?? null,
         deposit_amount: depositAmount,
         deposit_paid: depositAmount > 0,
-        payment_status: depositAmount > 0 ? ('partial' as const) : ('unpaid' as const),
+        remaining_balance: remaining,
+        balance_paid: remaining === 0,
+        payment_status: depositAmount > 0 || remaining === 0 ? ('partial' as const) : ('unpaid' as const),
       }
       
       await createAppointment(newAppointment)

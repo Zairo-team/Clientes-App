@@ -112,7 +112,7 @@ export function AppointmentDetailModal({
                     variant="ghost"
                     size="sm"
                     className="flex items-center gap-1 h-8 px-2"
-                    onClick={() => router.push(`/pacientes/${appointment.patient_id}`)}
+                    onClick={() => router.push(`/pacientes/${appointment.patient_id}/sesiones/${appointment.id}`)}
                   >
                     <Eye className="size-4" />
                     Ver
