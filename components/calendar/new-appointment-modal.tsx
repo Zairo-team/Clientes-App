@@ -18,6 +18,7 @@ interface NewAppointmentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAppointmentCreated?: () => void
+  initialPatientId?: string
 }
 
 interface NewAppointmentModalExtraProps {
@@ -36,7 +37,7 @@ const timeSlots = [
   "06:00 PM",
 ]
 
-export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
+export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, initialPatientId, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
   const { profile } = useAuth()
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -92,6 +93,13 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
     if (initialTime) {
       const formatted = formatTimeToAmPm(initialTime)
       if (formatted) setSelectedTime(formatted)
+    }
+
+    // If modal opened with an initialPatientId, pre-select that patient
+    if (initialPatientId) {
+      setSelectedPatientId(initialPatientId)
+      setPatientSearchText("")
+      setShowPatientDropdown(false)
     }
   }, [open, initialDate, initialTime])
 

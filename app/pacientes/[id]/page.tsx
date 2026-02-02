@@ -5,7 +5,7 @@ import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Calendar as CalendarIcon, Plus, Phone, Mail, Award as IdCard, Loader2, Trash2, Check, Clock, X, AlertCircle, Eye } from 'lucide-react'
 import Link from 'next/link'
-import { ScheduleAppointmentModal } from '@/components/patients/schedule-appointment-modal'
+import { NewAppointmentModal } from '@/components/calendar/new-appointment-modal'
 import { EditPatientModal } from '@/components/patients/edit-patient-modal'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
@@ -410,12 +410,11 @@ export default function PatientDetailPage() {
           </div>
         </main>
 
-        <ScheduleAppointmentModal
-          isOpen={showScheduleModal}
-          onClose={() => setShowScheduleModal(false)}
-          patientId={patient.id}
-          patientName={patient.full_name}
+        <NewAppointmentModal
+          open={showScheduleModal}
+          onOpenChange={(open) => setShowScheduleModal(open)}
           onAppointmentCreated={loadPatientData}
+          initialPatientId={patient.id}
         />
 
 
