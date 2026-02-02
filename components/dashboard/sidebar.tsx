@@ -33,7 +33,7 @@ export function Sidebar({ currentPage = "dashboard" }: SidebarProps) {
     { icon: Calendar, label: "Calendario", href: "/calendario", page: "calendario" },
     { icon: Briefcase, label: "Servicios", href: "/servicios", page: "servicios" },
     { icon: BarChart3, label: "Reportes", href: "/reportes", page: "reportes" },
-    { icon: Settings, label: "Configuración", href: "#", page: "configuracion" },
+    { icon: Settings, label: "Configuración", href: "/configuracion", page: "configuracion" },
   ]
 
   const handleLogout = async () => {

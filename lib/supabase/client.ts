@@ -9,6 +9,8 @@ export type Profile = {
   phone?: string | null
   avatar_url?: string | null
   business_name?: string | null
+  notifications_whatsapp?: boolean | null
+  notifications_email?: boolean | null
   created_at: string
   updated_at: string
 }
