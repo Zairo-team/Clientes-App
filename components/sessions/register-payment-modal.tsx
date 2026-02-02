@@ -15,10 +15,8 @@ import { Loader2 } from 'lucide-react'
 type RegisterPaymentModalProps = {
     isOpen: boolean
     onClose: () => void
-    onConfirm: (amount: number, type: 'deposit' | 'balance') => Promise<void>
+    onConfirm: (amount: number) => Promise<void>
     remainingBalance: number
-    depositAmount: number
-    depositPaid: boolean
 }
 
 export function RegisterPaymentModal({
@@ -26,8 +24,6 @@ export function RegisterPaymentModal({
     onClose,
     onConfirm,
     remainingBalance,
-    depositAmount,
-    depositPaid,
 }: RegisterPaymentModalProps) {
     const [amount, setAmount] = useState('')
     const [loading, setLoading] = useState(false)
@@ -41,12 +37,7 @@ export function RegisterPaymentModal({
             return
         }
 
-        if (!depositPaid && numAmount > depositAmount) {
-            setError(`El monto no puede ser mayor a la seña (${formatCurrency(depositAmount)})`)
-            return
-        }
-
-        if (depositPaid && numAmount > remainingBalance) {
+        if (numAmount > remainingBalance) {
             setError(`El monto no puede ser mayor al saldo pendiente (${formatCurrency(remainingBalance)})`)
             return
         }
@@ -54,8 +45,7 @@ export function RegisterPaymentModal({
         try {
             setLoading(true)
             setError('')
-            const paymentType = !depositPaid ? 'deposit' : 'balance'
-            await onConfirm(numAmount, paymentType)
+            await onConfirm(numAmount)
             setAmount('')
             onClose()
         } catch (err: any) {
@@ -72,16 +62,14 @@ export function RegisterPaymentModal({
         }).format(value)
     }
 
-    const paymentType = !depositPaid ? 'seña' : 'saldo'
-    const maxAmount = !depositPaid ? depositAmount : remainingBalance
-
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Registrar Pago de {paymentType.charAt(0).toUpperCase() + paymentType.slice(1)}</DialogTitle>
+                    <DialogTitle>Registrar Pago</DialogTitle>
                     <DialogDescription>
-                        Registra el pago de {paymentType}. El monto máximo es {formatCurrency(maxAmount)}.
+                        Registra un pago parcial o total del saldo pendiente.
+                        El monto máximo a pagar es {formatCurrency(remainingBalance)}.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -104,7 +92,7 @@ export function RegisterPaymentModal({
                                 className="pl-7"
                                 step="0.01"
                                 min="0"
-                                max={maxAmount}
+                                max={remainingBalance}
                             />
                         </div>
                         {error && (
@@ -114,12 +102,8 @@ export function RegisterPaymentModal({
 
                     <div className="bg-muted rounded-lg p-3 space-y-1">
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Tipo de pago:</span>
-                            <span className="font-medium capitalize">{paymentType}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Monto {paymentType}:</span>
-                            <span className="font-medium">{formatCurrency(depositPaid ? remainingBalance : depositAmount)}</span>
+                            <span className="text-muted-foreground">Saldo pendiente actual:</span>
+                            <span className="font-medium">{formatCurrency(remainingBalance)}</span>
                         </div>
                     </div>
                 </div>

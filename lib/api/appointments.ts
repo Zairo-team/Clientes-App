@@ -76,10 +76,15 @@ export async function getUpcomingAppointments(professionalId: string, limit: num
     return data
 }
 
+import { logAppointmentCreated } from './activity'
+
 /**
  * Create a new appointment
  */
-export async function createAppointment(appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at'>) {
+export async function createAppointment(
+    appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at'>,
+    patientNameForLog?: string
+) {
     const supabase = createClient()
 
     const { data, error } = await supabase
@@ -89,6 +94,19 @@ export async function createAppointment(appointment: Omit<Appointment, 'id' | 'c
         .single()
 
     if (error) throw error
+
+    // Log activity if patient name is provided
+    if (data && patientNameForLog) {
+        // Run in background to not block
+        logAppointmentCreated(
+            appointment.professional_id,
+            data.id,
+            appointment.patient_id,
+            patientNameForLog,
+            appointment.appointment_date
+        ).catch(err => console.error('Error logging appointment creation:', err))
+    }
+
     return data
 }
 

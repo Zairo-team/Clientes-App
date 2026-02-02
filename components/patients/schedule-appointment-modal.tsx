@@ -40,7 +40,9 @@ export function ScheduleAppointmentModal({
     is_video_call: false,
     location: '',
     notes: '',
+    deposit_amount: '',
   })
+  const [selectedServicePrice, setSelectedServicePrice] = useState<number>(0)
 
   useEffect(() => {
     if (isOpen && profile?.id) {
@@ -76,6 +78,10 @@ export function ScheduleAppointmentModal({
       })
     } else {
       setFormData({ ...formData, service_id: serviceId })
+    }
+
+    if (service) {
+      setSelectedServicePrice(service.price)
     }
   }
 
@@ -116,7 +122,14 @@ export function ScheduleAppointmentModal({
         location: formData.location || null,
         status: 'scheduled',
         notes: formData.notes || null,
-      })
+        // Payment fields
+        total_amount: selectedServicePrice,
+        deposit_amount: formData.deposit_amount ? Number(formData.deposit_amount) : 0,
+        deposit_paid: !!formData.deposit_amount && Number(formData.deposit_amount) > 0,
+        remaining_balance: Math.max(0, selectedServicePrice - (formData.deposit_amount ? Number(formData.deposit_amount) : 0)),
+        payment_status: (formData.deposit_amount && Number(formData.deposit_amount) > 0) ? 'partial' : 'unpaid',
+        balance_paid: false
+      }, patientName)
 
       toast({
         title: '¡Cita agendada!',
@@ -132,7 +145,9 @@ export function ScheduleAppointmentModal({
         is_video_call: false,
         location: '',
         notes: '',
+        deposit_amount: '',
       })
+      setSelectedServicePrice(0)
 
       onAppointmentCreated()
       onClose()
@@ -249,8 +264,8 @@ export function ScheduleAppointmentModal({
                 type="button"
                 onClick={() => setFormData({ ...formData, is_video_call: false })}
                 className={`flex-1 py-3 px-4 rounded-xl border text-sm font-semibold transition-all ${!formData.is_video_call
-                    ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary'
+                  ? 'border-primary bg-primary/5 text-primary shadow-sm'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary'
                   }`}
               >
                 Presencial
@@ -259,8 +274,8 @@ export function ScheduleAppointmentModal({
                 type="button"
                 onClick={() => setFormData({ ...formData, is_video_call: true })}
                 className={`flex-1 py-3 px-4 rounded-xl border text-sm font-semibold transition-all ${formData.is_video_call
-                    ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary'
+                  ? 'border-primary bg-primary/5 text-primary shadow-sm'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary'
                   }`}
               >
                 Videollamada
@@ -283,6 +298,35 @@ export function ScheduleAppointmentModal({
               />
             </div>
           )}
+
+          {/* Payment Info & Deposit */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl space-y-4 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">Precio del Servicio</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-white">
+                ${selectedServicePrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deposit" className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Seña / Pago Adelantado
+              </Label>
+              <Input
+                id="deposit"
+                type="number"
+                value={formData.deposit_amount}
+                onChange={(e) => setFormData({ ...formData, deposit_amount: e.target.value })}
+                placeholder="0.00"
+                className="h-11 bg-white dark:bg-slate-900"
+                min="0"
+                max={selectedServicePrice}
+              />
+              <p className="text-[10px] text-slate-400">
+                Si se ingresa un monto, se registrará como seña pagada.
+              </p>
+            </div>
+          </div>
 
           {/* Notes */}
           <div className="space-y-2">

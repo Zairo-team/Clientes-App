@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, DollarSign, Edit } from 'lucide-react'
+import { CreditCard, DollarSign, Edit, Check, X } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -68,17 +68,37 @@ export function SessionPaymentPanel({
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">
                     Estado de la Sesión
                 </label>
-                <Select value={session.status} onValueChange={onStatusChange}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="scheduled">Programada</SelectItem>
-                        <SelectItem value="completed">Completada</SelectItem>
-                        <SelectItem value="cancelled">Cancelada</SelectItem>
-                        <SelectItem value="no_show">No asistió</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between mb-4">
+                    <Badge variant="outline" className="text-sm py-1 px-3 uppercase tracking-wider font-bold">
+                        {getStatusLabel(session.status)}
+                    </Badge>
+                </div>
+
+                {/* Quick Status Actions */}
+                {session.status === 'scheduled' && (
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => onStatusChange('completed')}
+                            disabled={remainingBalance > 0}
+                            className={`flex-1 gap-2 ${remainingBalance === 0
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                : 'opacity-50 cursor-not-allowed'
+                                }`}
+                            title={remainingBalance > 0 ? 'Debe registrar el pago total primero' : 'Completar sesión'}
+                        >
+                            <Check className="w-4 h-4" />
+                            Completar
+                        </Button>
+                        <Button
+                            onClick={() => onStatusChange('cancelled')}
+                            variant="destructive"
+                            className="flex-1 gap-2"
+                        >
+                            <X className="w-4 h-4" />
+                            Cancelar
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Payment Details */}
@@ -93,18 +113,10 @@ export function SessionPaymentPanel({
 
                 {/* Deposit Amount */}
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Seña Recibida</span>
-                    <div className="flex items-center gap-2">
-                        <Badge
-                            variant={depositPaid ? 'default' : 'secondary'}
-                            className={depositPaid ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-700'}
-                        >
-                            {depositPaid ? 'PAGADO' : 'PENDIENTE'}
-                        </Badge>
-                        <span className="text-sm font-medium">
-                            {formatCurrency(depositAmount)}
-                        </span>
-                    </div>
+                    <span className="text-sm text-muted-foreground">Seña / Anticipo (Pagado)</span>
+                    <span className="text-sm font-medium">
+                        {formatCurrency(depositAmount)}
+                    </span>
                 </div>
 
                 {/* Remaining Balance */}
