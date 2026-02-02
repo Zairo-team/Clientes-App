@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Calendar as CalendarIcon, Plus, Phone, Mail, Award as IdCard, Loader2, Trash2, Check, Clock, X, AlertCircle, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { ScheduleAppointmentModal } from '@/components/patients/schedule-appointment-modal'
-import { NewSessionModal } from '@/components/patients/new-session-modal'
 import { EditPatientModal } from '@/components/patients/edit-patient-modal'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
@@ -41,7 +40,6 @@ export default function PatientDetailPage() {
   const patientId = params.id as string
 
   const [showScheduleModal, setShowScheduleModal] = useState(false)
-  const [showNewSessionModal, setShowNewSessionModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -222,22 +220,14 @@ export default function PatientDetailPage() {
               </div>
               <div className="flex items-center gap-2 md:gap-3">
                 <Button
-                  variant="outline"
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-2 h-9 md:h-11 font-bold bg-transparent text-sm"
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-2 h-9 md:h-11 font-bold shadow-lg text-sm"
                   onClick={() => setShowScheduleModal(true)}
                 >
                   <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
                   <span className="hidden sm:inline">Agendar Cita</span>
                   <span className="sm:hidden">Agendar</span>
                 </Button>
-                <Button
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-2 h-9 md:h-11 font-bold shadow-lg text-sm"
-                  onClick={() => setShowNewSessionModal(true)}
-                >
-                  <Plus className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="hidden sm:inline">Nueva Sesión</span>
-                  <span className="sm:hidden">Sesión</span>
-                </Button>
+
               </div>
             </div>
           </header>
@@ -421,13 +411,7 @@ export default function PatientDetailPage() {
           onAppointmentCreated={loadPatientData}
         />
 
-        <NewSessionModal
-          isOpen={showNewSessionModal}
-          onClose={() => setShowNewSessionModal(false)}
-          patientId={patient.id}
-          patientName={patient.full_name}
-          onSessionCreated={loadPatientData}
-        />
+
 
         <EditPatientModal
           open={showEditModal}

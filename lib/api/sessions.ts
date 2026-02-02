@@ -81,20 +81,42 @@ export async function updateSessionStatus(
 }
 
 /**
- * Register a payment (deposit or remaining balance)
+ * Get payments history for a specific session
+ */
+export async function getSessionPayments(sessionId: string) {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('appointment_id', sessionId)
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        throw new Error(`Error al cargar historial de pagos: ${error.message}`)
+    }
+
+    return data
+}
+
+/**
+ * Register a payment by creating a Sale record
+ * This automatically links the payment to the session and patient for reports
  */
 export async function registerPayment(
     sessionId: string,
     amount: number,
-    type: 'deposit' | 'balance',
     professionalId: string
 ) {
     const supabase = createClient()
 
-    // First get current session data
+    // 1. Get current session data to link patient and service
     const { data: session, error: fetchError } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+            *,
+            service:services(name)
+        `)
         .eq('id', sessionId)
         .eq('professional_id', professionalId)
         .single()
@@ -103,49 +125,94 @@ export async function registerPayment(
         throw new Error(`Error al obtener sesión: ${fetchError.message}`)
     }
 
-    let updateData: any = {
-        updated_at: new Date().toISOString()
+    // 2. Insert into SALES table
+    // Note: We use existing 'sales' table which has appointment_id foreign key
+    const { error: saleError } = await supabase
+        .from('sales')
+        .insert({
+            professional_id: professionalId,
+            patient_id: session.patient_id,
+            service_id: session.service_id,
+            appointment_id: sessionId,
+            service_name: session.service?.name || 'Servicio de Sesión',
+            service_date: session.appointment_date,
+            amount: amount,
+            payment_status: 'paid', // Instant payment
+            payment_date: new Date().toISOString().split('T')[0],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        })
+
+    if (saleError) {
+        throw new Error(`Error al registrar venta: ${saleError.message}`)
     }
 
-    if (type === 'deposit') {
-        updateData.deposit_paid = true
-        updateData.remaining_balance = (session.total_amount || 0) - (session.deposit_amount || 0)
-    } else {
-        updateData.balance_paid = true
-        updateData.remaining_balance = 0
-    }
+    // 3. Recalculate remaining balance for the appointment
+    return recalcSessionBalance(sessionId, professionalId)
+}
 
-    // Calculate payment status
+/**
+ * Recalculate session balance based on total amount, deposit, and registered sales
+ */
+async function recalcSessionBalance(sessionId: string, professionalId: string) {
+    const supabase = createClient()
+
+    // Get Session Data
+    const { data: session, error: sessionError } = await supabase
+        .from('appointments')
+        .select('total_amount, deposit_amount')
+        .eq('id', sessionId)
+        .single()
+
+    if (sessionError) throw sessionError
+
+    // Get Sum of Sales for this session
+    const { data: sales, error: salesError } = await supabase
+        .from('sales')
+        .select('amount')
+        .eq('appointment_id', sessionId)
+
+    if (salesError) throw salesError
+
+    const totalPaidInSales = sales.reduce((sum, sale) => sum + Number(sale.amount), 0)
+
+    // Remaining = Total - Deposit - Sum(Sales)
     const totalAmount = session.total_amount || 0
     const depositAmount = session.deposit_amount || 0
-    const depositPaid = type === 'deposit' ? true : session.deposit_paid
-    const balancePaid = type === 'balance' ? true : session.balance_paid
 
-    if (depositPaid && balancePaid) {
-        updateData.payment_status = 'paid'
-    } else if (depositPaid || balancePaid) {
-        updateData.payment_status = 'partial'
-    } else {
-        updateData.payment_status = 'unpaid'
+    // Ensure accurate calculation
+    const remainingBalance = Math.max(0, totalAmount - depositAmount - totalPaidInSales)
+
+    // Determine Status
+    let paymentStatus = 'unpaid'
+    if (remainingBalance <= 0) {
+        paymentStatus = 'paid'
+    } else if (depositAmount > 0 || totalPaidInSales > 0) {
+        paymentStatus = 'partial'
     }
 
-    const { data, error } = await supabase
+    // Update Appointment
+    const { data: updatedSession, error: updateError } = await supabase
         .from('appointments')
-        .update(updateData)
+        .update({
+            remaining_balance: remainingBalance,
+            payment_status: paymentStatus,
+            balance_paid: remainingBalance <= 0,
+            updated_at: new Date().toISOString()
+        })
         .eq('id', sessionId)
         .eq('professional_id', professionalId)
         .select()
         .single()
 
-    if (error) {
-        throw new Error(`Error al registrar pago: ${error.message}`)
-    }
+    if (updateError) throw updateError
 
-    return data
+    return updatedSession
 }
 
 /**
  * Update session rates (total amount and deposit)
+ * Triggers a balance recalculation
  */
 export async function updateSessionRates(
     sessionId: string,
@@ -164,25 +231,22 @@ export async function updateSessionRates(
         throw new Error('Los montos deben ser positivos')
     }
 
-    // Calculate remaining balance
-    const remainingBalance = totalAmount - depositAmount
-
-    const { data, error } = await supabase
+    // Update rates first
+    const { error } = await supabase
         .from('appointments')
         .update({
             total_amount: totalAmount,
             deposit_amount: depositAmount,
-            remaining_balance: remainingBalance,
+            deposit_paid: depositAmount > 0,
             updated_at: new Date().toISOString()
         })
         .eq('id', sessionId)
         .eq('professional_id', professionalId)
-        .select()
-        .single()
 
     if (error) {
         throw new Error(`Error al actualizar tarifas: ${error.message}`)
     }
 
-    return data
+    // Recalculate balance considering existing payments
+    return recalcSessionBalance(sessionId, professionalId)
 }

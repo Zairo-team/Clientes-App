@@ -8,12 +8,13 @@ import { ArrowLeft, Save, FileText, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
-import { getSessionDetail, updateSessionNotes, updateSessionStatus, registerPayment, updateSessionRates } from '@/lib/api/sessions'
+import { getSessionDetail, updateSessionNotes, updateSessionStatus, registerPayment, updateSessionRates, getSessionPayments } from '@/lib/api/sessions'
 import { SessionPaymentPanel } from '@/components/sessions/session-payment-panel'
 import { RegisterPaymentModal } from '@/components/sessions/register-payment-modal'
 import { AdjustRatesModal } from '@/components/sessions/adjust-rates-modal'
+import { PaymentHistoryList } from '@/components/sessions/payment-history-list'
 import { useToast } from '@/hooks/use-toast'
-import type { Patient } from '@/lib/supabase/client'
+import type { Patient, Sale } from '@/lib/supabase/client'
 
 type SessionWithRelations = {
   id: string
@@ -51,6 +52,7 @@ export default function SessionDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [session, setSession] = useState<SessionWithRelations | null>(null)
+  const [payments, setPayments] = useState<Sale[]>([])
   const [notes, setNotes] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -67,9 +69,14 @@ export default function SessionDetailPage() {
 
     try {
       setLoading(true)
-      const data = await getSessionDetail(sessionId, profile.id)
-      setSession(data as SessionWithRelations)
-      setNotes(data.notes || '')
+      const [sessionData, paymentsData] = await Promise.all([
+        getSessionDetail(sessionId, profile.id),
+        getSessionPayments(sessionId)
+      ])
+
+      setSession(sessionData as SessionWithRelations)
+      setPayments(paymentsData as Sale[])
+      setNotes(sessionData.notes || '')
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -128,15 +135,19 @@ export default function SessionDetailPage() {
     }
   }
 
-  const handleRegisterPayment = async (amount: number, type: 'deposit' | 'balance') => {
+  const handleRegisterPayment = async (amount: number) => {
     if (!profile?.id) return
 
     try {
-      const updatedSession = await registerPayment(sessionId, amount, type, profile.id)
+      const updatedSession = await registerPayment(sessionId, amount, profile.id)
       setSession(prev => prev ? { ...prev, ...updatedSession } : null)
+      // Refresh payments list
+      const updatedPayments = await getSessionPayments(sessionId)
+      setPayments(updatedPayments as Sale[])
+
       toast({
         title: 'Pago registrado',
-        description: `Se registró el pago de ${type === 'deposit' ? 'seña' : 'saldo'} exitosamente`,
+        description: `Se registró el pago de ${new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount)} exitosamente`,
       })
     } catch (error: any) {
       toast({
@@ -269,19 +280,9 @@ export default function SessionDetailPage() {
                     <span>{notes.length} caracteres</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="lg:col-span-5 space-y-6">
-                <SessionPaymentPanel
-                  session={session}
-                  onStatusChange={handleStatusChange}
-                  onRegisterPayment={() => setShowPaymentModal(true)}
-                  onAdjustRates={() => setShowRatesModal(true)}
-                />
 
                 {/* Patient Info */}
-                <div className="bg-card rounded-xl border p-4 md:p-6 shadow-sm">
+                <div className="bg-card rounded-xl border p-4 md:p-6 shadow-sm mt-6">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
                     Información del Paciente
                   </h4>
@@ -304,31 +305,45 @@ export default function SessionDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Right Column */}
+              <div className="lg:col-span-5 space-y-6">
+                <SessionPaymentPanel
+                  session={session}
+                  onStatusChange={handleStatusChange}
+                  onRegisterPayment={() => setShowPaymentModal(true)}
+                  onAdjustRates={() => setShowRatesModal(true)}
+                />
+
+                <PaymentHistoryList payments={payments} />
+
+
+              </div>
             </div>
           </div>
         </main>
 
-        {session && (
-          <>
-            <RegisterPaymentModal
-              isOpen={showPaymentModal}
-              onClose={() => setShowPaymentModal(false)}
-              onConfirm={handleRegisterPayment}
-              remainingBalance={session.remaining_balance || 0}
-              depositAmount={session.deposit_amount || 0}
-              depositPaid={session.deposit_paid || false}
-            />
+        {
+          session && (
+            <>
+              <RegisterPaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onConfirm={handleRegisterPayment}
+                remainingBalance={session.remaining_balance || 0}
+              />
 
-            <AdjustRatesModal
-              isOpen={showRatesModal}
-              onClose={() => setShowRatesModal(false)}
-              onConfirm={handleAdjustRates}
-              currentTotal={session.total_amount || 0}
-              currentDeposit={session.deposit_amount || 0}
-            />
-          </>
-        )}
-      </div>
-    </ProtectedRoute>
+              <AdjustRatesModal
+                isOpen={showRatesModal}
+                onClose={() => setShowRatesModal(false)}
+                onConfirm={handleAdjustRates}
+                currentTotal={session.total_amount || 0}
+                currentDeposit={session.deposit_amount || 0}
+              />
+            </>
+          )
+        }
+      </div >
+    </ProtectedRoute >
   )
 }
