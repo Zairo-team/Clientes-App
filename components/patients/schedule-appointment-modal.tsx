@@ -129,7 +129,7 @@ export function ScheduleAppointmentModal({
         remaining_balance: Math.max(0, selectedServicePrice - (formData.deposit_amount ? Number(formData.deposit_amount) : 0)),
         payment_status: (formData.deposit_amount && Number(formData.deposit_amount) > 0) ? 'partial' : 'unpaid',
         balance_paid: false
-      })
+      }, patientName)
 
       toast({
         title: '¡Cita agendada!',

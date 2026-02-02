@@ -103,3 +103,19 @@ export async function logPaymentReceived(
         description: `${patientName} ha pagado $${amount.toFixed(2)}.`,
     })
 }
+
+export async function logAppointmentCancelled(
+    professionalId: string,
+    appointmentId: string,
+    patientId: string,
+    patientName: string
+) {
+    return logActivity({
+        professional_id: professionalId,
+        activity_type: 'appointment_cancelled',
+        appointment_id: appointmentId,
+        patient_id: patientId,
+        title: 'Cita cancelada',
+        description: `La cita con ${patientName} ha sido cancelada.`,
+    })
+}

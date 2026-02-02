@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Appointment } from '@/lib/supabase/client'
+import { logAppointmentCompleted, logAppointmentCancelled, logPaymentReceived } from './activity'
 
 /**
  * Get detailed information about a specific session/appointment
@@ -69,12 +70,26 @@ export async function updateSessionStatus(
         })
         .eq('id', sessionId)
         .eq('professional_id', professionalId)
-        .select()
+        .select('*, patient:patients(full_name)')
         .single()
 
     if (error) {
         console.error('Error updating status:', error)
         throw new Error(`Error al actualizar estado: ${error.message}`)
+    }
+
+    // Log Activity
+    if (status === 'completed' || status === 'cancelled') {
+        const patientName = (data as any).patient?.full_name
+        if (patientName) {
+            const logFunc = status === 'completed' ? logAppointmentCompleted : logAppointmentCancelled
+            logFunc(
+                professionalId,
+                sessionId,
+                data.patient_id,
+                patientName
+            ).catch(err => console.error('Error logging status change:', err))
+        }
     }
 
     return data
@@ -115,7 +130,8 @@ export async function registerPayment(
         .from('appointments')
         .select(`
             *,
-            service:services(name)
+            service:services(name),
+            patient:patients(full_name)
         `)
         .eq('id', sessionId)
         .eq('professional_id', professionalId)
@@ -127,7 +143,7 @@ export async function registerPayment(
 
     // 2. Insert into SALES table
     // Note: We use existing 'sales' table which has appointment_id foreign key
-    const { error: saleError } = await supabase
+    const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
             professional_id: professionalId,
@@ -142,9 +158,22 @@ export async function registerPayment(
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         })
+        .select()
+        .single()
 
     if (saleError) {
         throw new Error(`Error al registrar venta: ${saleError.message}`)
+    }
+
+    // Log Payment
+    if (saleData && (session as any).patient?.full_name) {
+        logPaymentReceived(
+            professionalId,
+            saleData.id,
+            session.patient_id,
+            (session as any).patient.full_name,
+            amount
+        ).catch(err => console.error('Error logging payment:', err))
     }
 
     // 3. Recalculate remaining balance for the appointment

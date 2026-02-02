@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { getTodayAppointments } from "@/lib/api/appointments"
 import { getBillingStats } from "@/lib/api/sales"
 import { getRecentActivity } from "@/lib/api/activity"
-import { Loader2, CreditCard, CalendarDays, Clock, MessageCircle, Eye } from "lucide-react"
+import { Loader2, CreditCard, CalendarDays, Clock, MessageCircle, Eye, UserPlus, Calendar, CheckCircle, XCircle, Banknote } from "lucide-react"
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -27,7 +27,7 @@ export default function Dashboard() {
     if (profile?.id) {
       loadDashboardData()
     }
-  }, [profile?.id]) // Only re-run when profile ID actually changes
+  }, [profile?.id])
 
   const loadDashboardData = async () => {
     if (!profile?.id) return
@@ -50,6 +50,24 @@ export default function Dashboard() {
     }
   }
 
+  // Helper for activity icons
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'patient_created':
+        return { icon: UserPlus, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' }
+      case 'appointment_created':
+        return { icon: Calendar, color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400' }
+      case 'appointment_completed':
+        return { icon: CheckCircle, color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' }
+      case 'appointment_cancelled':
+        return { icon: XCircle, color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      case 'payment_received':
+        return { icon: Banknote, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' }
+      default:
+        return { icon: Clock, color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' }
+    }
+  }
+
   if (loading) {
     return (
       <ProtectedRoute>
@@ -63,6 +81,7 @@ export default function Dashboard() {
   return (
     <ProtectedRoute>
       <div className="flex h-screen overflow-hidden">
+        {/* ... Sidebar and Main content wrapper ... */}
         <Sidebar currentPage="dashboard" />
         <main className="flex-1 flex flex-col overflow-y-auto bg-background pt-16 lg:pt-0">
           <DashboardHeader />
@@ -70,6 +89,7 @@ export default function Dashboard() {
           {/* Stats Section */}
           <section className="max-w-[1200px] w-full mx-auto px-4 md:px-6 mb-6 md:mb-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+              {/* ... Stats cards ... */}
               {/* Monthly Billing */}
               <div className="bg-card p-4 md:p-6 rounded-xl border border-border shadow-sm">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
@@ -211,25 +231,33 @@ export default function Dashboard() {
                       No hay actividad reciente
                     </div>
                   ) : (
-                    recentActivity.map((activity, index) => (
-                      <div key={activity.id} className="flex gap-2.5 md:gap-3 relative">
-                        {index < recentActivity.length - 1 && (
-                          <div className="absolute left-[14px] md:left-[17px] top-8 md:top-10 bottom-[-16px] md:bottom-[-20px] w-px bg-border" />
-                        )}
-                        <div className="size-7 md:size-[34px] rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 z-10">
-                          <span className="text-xs">✓</span>
+                    recentActivity.map((activity, index) => {
+                      const { icon: Icon, color } = getActivityIcon(activity.activity_type)
+                      return (
+                        <div key={activity.id} className="flex gap-2.5 md:gap-3 relative">
+                          {index < recentActivity.length - 1 && (
+                            <div className="absolute left-[14px] md:left-[17px] top-8 md:top-10 bottom-[-16px] md:bottom-[-20px] w-px bg-border" />
+                          )}
+                          <div className={`size-7 md:size-[34px] rounded-full flex items-center justify-center shrink-0 z-10 ${color}`}>
+                            <Icon className="size-3.5 md:size-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs md:text-sm text-foreground font-medium">{activity.title}</p>
+                            <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 truncate">
+                              {activity.description}
+                            </p>
+                            <span className="text-[9px] md:text-[10px] text-muted-foreground font-medium">
+                              {new Date(activity.created_at).toLocaleDateString('es-AR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs md:text-sm text-foreground font-medium">{activity.title}</p>
-                          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 truncate">
-                            {activity.description}
-                          </p>
-                          <span className="text-[9px] md:text-[10px] text-muted-foreground font-medium">
-                            {new Date(activity.created_at).toLocaleDateString('es-AR')}
-                          </span>
-                        </div>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </div>
