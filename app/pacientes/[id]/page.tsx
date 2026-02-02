@@ -166,6 +166,17 @@ export default function PatientDetailPage() {
     return badges[status as keyof typeof badges] || badges.scheduled
   }
 
+  const formatAppointmentDate = (dateStr: string) => {
+    // Parse date string (YYYY-MM-DD) without timezone to avoid UTC offset issues
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
   if (loading) {
     return (
       <ProtectedRoute>
@@ -361,11 +372,7 @@ export default function PatientDetailPage() {
                                     Sesión de {appointment.service?.name || 'Psicoterapia'}
                                   </h4>
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    {new Date(appointment.appointment_date).toLocaleDateString('es-AR', {
-                                      day: '2-digit',
-                                      month: 'long',
-                                      year: 'numeric'
-                                    })} • {appointment.start_time.substring(0, 5)} - {appointment.end_time.substring(0, 5)}
+                                    {formatAppointmentDate(appointment.appointment_date)} • {appointment.start_time.substring(0, 5)} - {appointment.end_time.substring(0, 5)}
                                   </p>
                                 </div>
                                 <Badge className={`${badgeColor} text-[10px] font-bold uppercase px-2 py-1`}>

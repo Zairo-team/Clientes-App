@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon } from 'lucide-react'
 import { NewAppointmentModal } from '@/components/calendar/new-appointment-modal'
+import { AppointmentDetailModal } from '@/components/calendar/appointment-detail-modal'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
 import { getAppointments } from '@/lib/api/appointments'
@@ -24,6 +25,8 @@ export default function CalendarioPage() {
   const [appointments, setAppointments] = useState<AppointmentWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithRelations | null>(null)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
 
   useEffect(() => {
     if (profile?.id) {
@@ -102,7 +105,7 @@ export default function CalendarioPage() {
 
   const getAppointmentsForDay = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0]
-    return appointments.filter(apt => apt.appointment_date === dateStr)
+    return appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled')
   }
 
   const goToPrevWeek = () => {
@@ -288,23 +291,30 @@ export default function CalendarioPage() {
                           return (
                             <div
                               key={`${hour}-${dayIndex}`}
+                              className={`border-r border-b border-border min-h-[60px] p-1 cursor-pointer ${isWeekend ? 'bg-muted/20' : 'bg-white'} flex flex-col gap-1`}
                               onClick={() => {
-                                const dateStr = day.toISOString().split('T')[0]
-                                setModalInitialDate(dateStr)
-                                setModalInitialTime(`${String(hour).padStart(2,'0')}:00`)
-                                setIsModalOpen(true)
+                                if (hourAppointments.length === 0) {
+                                  const dateStr = day.toISOString().split('T')[0]
+                                  setModalInitialDate(dateStr)
+                                  setModalInitialTime(`${String(hour).padStart(2,'0')}:00`)
+                                  setIsModalOpen(true)
+                                }
                               }}
-                              className={`border-r border-b border-border min-h-[60px] p-1 cursor-pointer ${isWeekend ? 'bg-muted/20' : 'bg-white'}`}
                             >
                               {hourAppointments.map((apt) => (
                                 <div
                                   key={apt.id}
-                                  className={`p-2 rounded-lg text-xs ${apt.service?.color === 'blue' ? 'bg-blue-100 border-l-4 border-blue-500 text-blue-900' :
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedAppointment(apt)
+                                    setDetailModalOpen(true)
+                                  }}
+                                  className={`p-2 rounded-lg text-xs flex-1 cursor-pointer hover:shadow-md transition-shadow ${apt.service?.color === 'blue' ? 'bg-blue-100 border-l-4 border-blue-500 text-blue-900' :
                                       apt.service?.color === 'emerald' ? 'bg-emerald-100 border-l-4 border-emerald-500 text-emerald-900' :
                                         apt.service?.color === 'purple' ? 'bg-purple-100 border-l-4 border-purple-500 text-purple-900' :
                                           apt.service?.color === 'amber' ? 'bg-amber-100 border-l-4 border-amber-500 text-amber-900' :
                                             'bg-primary/10 border-l-4 border-primary text-primary'
-                                    } mb-1`}
+                                    }`}
                                 >
                                   <div className="font-bold truncate">{apt.patient?.full_name}</div>
                                   <div className="text-[10px] opacity-80 truncate">{apt.service?.name}</div>
@@ -325,10 +335,27 @@ export default function CalendarioPage() {
 
         <NewAppointmentModal
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open)
+            if (!open) {
+              setModalInitialDate(undefined)
+              setModalInitialTime(undefined)
+            }
+          }}
           onAppointmentCreated={loadAppointments}
           initialDate={modalInitialDate}
           initialTime={modalInitialTime}
+        />
+
+        <AppointmentDetailModal
+          open={detailModalOpen}
+          onOpenChange={setDetailModalOpen}
+          appointment={selectedAppointment}
+          onAppointmentUpdated={loadAppointments}
+          onEdit={(apt) => {
+            // Could implement edit functionality here
+            console.log('Edit appointment:', apt)
+          }}
         />
       </div>
     </ProtectedRoute>
