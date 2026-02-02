@@ -203,14 +203,17 @@ async function recalcSessionBalance(sessionId: string, professionalId: string) {
 
     if (salesError) throw salesError
 
-    const totalPaidInSales = sales.reduce((sum, sale) => sum + Number(sale.amount), 0)
+    const totalPaidInSales = (sales || []).reduce((sum, sale) => sum + Number(sale.amount), 0)
 
-    // Remaining = Total - Deposit - Sum(Sales)
     const totalAmount = session.total_amount || 0
     const depositAmount = session.deposit_amount || 0
 
-    // Ensure accurate calculation
-    const remainingBalance = Math.max(0, totalAmount - depositAmount - totalPaidInSales)
+    // If there are sales recorded for the session, treat sales as authoritative
+    // Remaining = Total - Sum(Sales)  (ignores appointment.deposit_amount to avoid double-counting)
+    // Otherwise, remaining = Total - depositAmount
+    const remainingBalance = totalPaidInSales > 0
+        ? Math.max(0, totalAmount - totalPaidInSales)
+        : Math.max(0, totalAmount - depositAmount)
 
     // Determine Status
     let paymentStatus = 'unpaid'
