@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Edit2, Trash2, X } from "lucide-react"
+import { Edit2, Trash2, X, Eye } from "lucide-react"
 import { cancelAppointment } from "@/lib/api/appointments"
 import type { Appointment } from "@/lib/supabase/client"
 
@@ -12,7 +13,7 @@ interface AppointmentDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   appointment: (Appointment & {
-    patient?: { full_name: string } | null
+    patient?: { full_name: string; id?: string } | null
     service?: { name: string; color: string } | null
   }) | null
   onAppointmentUpdated?: () => void
@@ -26,6 +27,7 @@ export function AppointmentDetailModal({
   onAppointmentUpdated,
   onEdit,
 }: AppointmentDetailModalProps) {
+  const router = useRouter()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -38,6 +40,24 @@ export function AppointmentDetailModal({
     if (color === 'purple') return 'bg-purple-100 border-purple-500 text-purple-900'
     if (color === 'amber') return 'bg-amber-100 border-amber-500 text-amber-900'
     return 'bg-primary/10 border-primary text-primary'
+  }
+
+  // Parse date correctly to avoid UTC offset issues
+  const formatDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('es-AR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    })
+  }
+
+  // Calculate remaining balance
+  const getRemainingBalance = () => {
+    if (!appointment.total_amount) return 0
+    const depositAmount = appointment.deposit_amount || 0
+    return Math.max(0, appointment.total_amount - depositAmount)
   }
 
   const handleDelete = async () => {
@@ -85,7 +105,20 @@ export function AppointmentDetailModal({
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Paciente
               </label>
-              <p className="text-sm font-semibold">{appointment.patient?.full_name}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">{appointment.patient?.full_name}</p>
+                {appointment.patient_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1 h-8 px-2"
+                    onClick={() => router.push(`/pacientes/${appointment.patient_id}`)}
+                  >
+                    <Eye className="size-4" />
+                    Ver
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Date and Time */}
@@ -95,11 +128,7 @@ export function AppointmentDetailModal({
                   Fecha
                 </label>
                 <p className="text-sm font-semibold">
-                  {new Date(appointment.appointment_date).toLocaleDateString('es-AR', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                  {formatDate(appointment.appointment_date)}
                 </p>
               </div>
               <div className="space-y-2">
@@ -133,21 +162,45 @@ export function AppointmentDetailModal({
             </div>
 
             {/* Payment Status */}
-            {appointment.payment_status && (
+            {(appointment.payment_status || appointment.total_amount) && (
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Pago
+                  Información de Pago
                 </label>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">
-                    {appointment.payment_status === 'paid' ? 'Pagado' :
-                     appointment.payment_status === 'partial' ? 'Parcial' :
-                     'No pagado'}
-                  </span>
+                <div className="space-y-2 bg-muted/50 p-3 rounded-lg">
+                  {appointment.total_amount && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Costo Total:</span>
+                      <span className="font-semibold">
+                        ${appointment.total_amount.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   {appointment.deposit_amount && (
-                    <span className="text-sm font-semibold">
-                      ${appointment.deposit_amount.toFixed(2)}
-                    </span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Depósito/Adelanto:</span>
+                      <span className="font-semibold">
+                        ${appointment.deposit_amount.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {getRemainingBalance() > 0 && (
+                    <div className="flex items-center justify-between text-sm border-t border-border pt-2 mt-2">
+                      <span>Por Abonar:</span>
+                      <span className="font-semibold text-amber-600">
+                        ${getRemainingBalance().toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {appointment.payment_status && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
+                      <span>Estado:</span>
+                      <span className="font-semibold">
+                        {appointment.payment_status === 'paid' ? 'Pagado' :
+                         appointment.payment_status === 'partial' ? 'Parcial' :
+                         'No pagado'}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

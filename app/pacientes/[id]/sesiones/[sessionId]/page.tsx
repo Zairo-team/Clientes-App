@@ -48,6 +48,17 @@ export default function SessionDetailPage() {
   const patientId = params.id as string
   const sessionId = params.sessionId as string
 
+  const formatAppointmentDate = (dateStr: string) => {
+    // Parse date string (YYYY-MM-DD) without timezone to avoid UTC offset issues
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [session, setSession] = useState<SessionWithRelations | null>(null)
@@ -209,11 +220,7 @@ export default function SessionDetailPage() {
                       {session.patient.full_name}
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(session.appointment_date).toLocaleDateString('es-AR', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric'
-                      })} • {session.start_time.substring(0, 5)} - {session.end_time.substring(0, 5)}
+                      {formatAppointmentDate(session.appointment_date)} • {session.start_time.substring(0, 5)} - {session.end_time.substring(0, 5)}
                       {session.service && ` • ${session.service.name}`}
                     </p>
                   </div>
