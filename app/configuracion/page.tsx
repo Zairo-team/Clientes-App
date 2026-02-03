@@ -13,6 +13,7 @@ import { User, Shield, Bell, Loader2, Save, Mail, Phone, Lock, MessageSquare } f
 import { useToast } from '@/hooks/use-toast'
 import { updateProfile } from '@/lib/api/profile'
 import { createClient } from '@/lib/supabase/client'
+import MedicalRecordConfig from '@/components/config/medical-record-config'
 
 export default function ConfigurationPage() {
     const { profile, user } = useAuth()
@@ -251,6 +252,15 @@ export default function ConfigurationPage() {
                             </div>
                         </section>
 
+                        {/* Medical Record Configuration Section */}
+                        <section className="bg-card rounded-xl border p-6 shadow-sm space-y-6">
+                            <div className="flex items-center gap-3 border-b pb-4">
+                                <MessageSquare className="w-5 h-5 text-green-600" />
+                                <h2 className="text-lg font-bold">Ficha Médica</h2>
+                            </div>
+
+                            <MedicalRecordConfig profileId={profile.id} />
+                        </section>
                         {/* Save Button */}
 
                     </div>

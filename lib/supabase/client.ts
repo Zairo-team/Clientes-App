@@ -97,6 +97,43 @@ export type ActivityLog = {
   created_at: string
 }
 
+export type MedicalRecordField = {
+  id: string
+  professional_id: string
+  field_name: string
+  field_type: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox'
+  is_required: boolean
+  display_order: number
+  options?: string | null
+  placeholder?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type MedicalRecord = {
+  id: string
+  professional_id: string
+  patient_id: string
+  title: string
+  patient_full_name: string
+  patient_dni?: string | null
+  patient_age?: number | null
+  patient_phone?: string | null
+  patient_email?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type MedicalRecordData = {
+  id: string
+  medical_record_id: string
+  field_id: string
+  value?: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Database type with all tables for Supabase client
 export type Database = {
   public: {
@@ -130,6 +167,21 @@ export type Database = {
         Row: ActivityLog
         Insert: Omit<ActivityLog, 'id' | 'created_at'>
         Update: never
+      }
+      medical_record_fields: {
+        Row: MedicalRecordField
+        Insert: Omit<MedicalRecordField, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<MedicalRecordField, 'id' | 'professional_id' | 'created_at' | 'updated_at'>>
+      }
+      medical_records: {
+        Row: MedicalRecord
+        Insert: Omit<MedicalRecord, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<MedicalRecord, 'id' | 'professional_id' | 'patient_id' | 'created_at' | 'updated_at'>>
+      }
+      medical_record_data: {
+        Row: MedicalRecordData
+        Insert: Omit<MedicalRecordData, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<MedicalRecordData, 'id' | 'medical_record_id' | 'field_id' | 'created_at' | 'updated_at'>>
       }
     }
     Views: {
