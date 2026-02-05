@@ -101,7 +101,7 @@ export type MedicalRecordField = {
   id: string
   professional_id: string
   field_name: string
-  field_type: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox'
+  field_type: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox' | 'multi-input'
   is_required: boolean
   display_order: number
   options?: string | null

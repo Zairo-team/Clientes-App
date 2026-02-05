@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Patient, MedicalRecordField } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-
+import TagsInput from '@/components/ui/tags-input'
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -195,6 +195,14 @@ export default function MedicalRecordModal({ open, onOpenChange, patient, profes
                 )}
                 {f.field_type === 'checkbox' && (
                   <Checkbox checked={!!formData[f.id]} onCheckedChange={(v) => handleChange(f.id, v)} />
+                )}
+                {f.field_type === 'multi-input' && (
+                  <TagsInput
+                    value={(formData[f.id] ? JSON.parse(formData[f.id]) : []) as string[]}
+                    onChange={(values) => handleChange(f.id, JSON.stringify(values))}
+                    suggestedValues={f.options ? JSON.parse(f.options) : []}
+                    placeholder="Escribe y presiona Enter"
+                  />
                 )}
               </div>
             ))}

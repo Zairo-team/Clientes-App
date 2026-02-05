@@ -9,17 +9,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
-import { User, Shield, Bell, Loader2, Save, Mail, Phone, Lock, MessageSquare } from 'lucide-react'
+import { User, Shield, Bell, Loader2, Save, Mail, Phone, Lock, MessageSquare, FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { updateProfile } from '@/lib/api/profile'
 import { createClient } from '@/lib/supabase/client'
-import MedicalRecordConfig from '@/components/config/medical-record-config'
+import MedicalRecordModal from '@/components/config/medical-record-modal'
 
 export default function ConfigurationPage() {
     const { profile, user } = useAuth()
     const { toast } = useToast()
     const [loading, setLoading] = useState(false)
     const [sendingReset, setSendingReset] = useState(false)
+    const [medicalRecordModalOpen, setMedicalRecordModalOpen] = useState(false)
 
     // Form State
     const [formData, setFormData] = useState({
@@ -253,14 +254,26 @@ export default function ConfigurationPage() {
                         </section>
 
                         {/* Medical Record Configuration Section */}
-                        <section className="bg-card rounded-xl border p-6 shadow-sm space-y-6">
-                            <div className="flex items-center gap-3 border-b pb-4">
-                                <MessageSquare className="w-5 h-5 text-green-600" />
-                                <h2 className="text-lg font-bold">Ficha Médica</h2>
+                        <section className="bg-card rounded-xl border p-6 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="w-5 h-5 text-blue-600" />
+                                    <h2 className="text-lg font-bold">Ficha Médica</h2>
+                                </div>
+                                <Button 
+                                    onClick={() => setMedicalRecordModalOpen(true)}
+                                    variant="default"
+                                >
+                                    Configurar
+                                </Button>
                             </div>
-
-                            <MedicalRecordConfig profileId={profile.id} />
                         </section>
+
+                        <MedicalRecordModal 
+                            open={medicalRecordModalOpen}
+                            onOpenChange={setMedicalRecordModalOpen}
+                            profileId={profile?.id || null}
+                        />
                         {/* Save Button */}
 
                     </div>

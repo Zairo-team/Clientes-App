@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.medical_record_fields (
   professional_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
 
   field_name TEXT NOT NULL,
-  field_type TEXT NOT NULL CHECK (field_type IN ('text','number','date','textarea','select','checkbox')),
+  field_type TEXT NOT NULL CHECK (field_type IN ('text','number','date','textarea','select','checkbox','multi-input')),
 
   is_required BOOLEAN DEFAULT false,
   display_order INTEGER DEFAULT 0,
