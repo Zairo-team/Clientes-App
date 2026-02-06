@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth-context'
 import { createPatientAction } from '@/lib/actions/patient-actions'
+import { getWhatsAppLink } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, User, X } from 'lucide-react'
+import { Loader2, User, X, MessageCircle } from 'lucide-react'
 
 interface CreatePatientModalProps {
   open: boolean
@@ -61,18 +62,35 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
       // Close modal first
       onOpenChange(false)
 
+      // WhatsApp link
+      const waLink = getWhatsAppLink(
+        formData.phone,
+        `Hola ${formData.full_name}, ¡bienvenido a ${profile.business_name || 'Gestor Pro'}! Ya creamos tu perfil.`
+      )
+
       // Show toast
       toast({
         title: '¡Paciente creado con éxito!',
         description: `${patient.full_name} ha sido agregado al sistema.`,
         action: (
-          <button
-            onClick={() => router.push(`/pacientes/${patient.id}`)}
-            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700 transition-colors whitespace-nowrap"
-          >
-            Ver Detalle →
-          </button>
-        ),
+          <div className="flex gap-2">
+            {waLink && (
+              <button
+                onClick={() => window.open(waLink, '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-green-600 text-white px-3 py-2 hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                <MessageCircle className="size-4" />
+                Notificar
+              </button>
+            )}
+            <button
+              onClick={() => router.push(`/pacientes/${patient.id}`)}
+              className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-primary/20 text-primary px-3 py-2 hover:bg-primary/30 transition-colors whitespace-nowrap"
+            >
+              Ver Detalle
+            </button>
+          </div>
+        )
       })
 
       // Delay the callback to allow toast to render

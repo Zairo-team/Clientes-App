@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Search, X, Calendar, Check, ChevronLeft, ChevronRight, Info, Bell } from "lucide-react"
+import { Search, X, Calendar, Check, ChevronLeft, ChevronRight, Info, Bell, MessageCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { getPatients } from "@/lib/api/patients"
 import { getServices } from "@/lib/api/services"
 import { createAppointment } from "@/lib/api/appointments"
+import { getWhatsAppLink } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import type { Patient, Service } from "@/lib/supabase/client"
 
 interface NewAppointmentModalProps {
@@ -39,6 +41,7 @@ const timeSlots = [
 
 export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, initialPatientId, initialDate, initialTime }: NewAppointmentModalProps & NewAppointmentModalExtraProps) {
   const { profile } = useAuth()
+  const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [reminderEnabled, setReminderEnabled] = useState(true)
@@ -57,7 +60,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
   // Load patients and services when modal opens
   useEffect(() => {
     if (!open || !profile?.id) return
-    
+
     const loadData = async () => {
       try {
         setLoadingData(true)
@@ -73,7 +76,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
         setLoadingData(false)
       }
     }
-    
+
     loadData()
   }, [open, profile?.id])
 
@@ -118,13 +121,13 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
 
   // Filter patients based on search text
   const filteredPatients = patientSearchText.trim()
-    ? patients.filter(p => 
-        p.full_name?.toLowerCase().includes(patientSearchText.toLowerCase()) ||
-        p.dni?.includes(patientSearchText)
-      )
+    ? patients.filter(p =>
+      p.full_name?.toLowerCase().includes(patientSearchText.toLowerCase()) ||
+      p.dni?.includes(patientSearchText)
+    )
     : patients
 
-  const selectedPatient = selectedPatientId 
+  const selectedPatient = selectedPatientId
     ? patients.find(p => p.id === selectedPatientId)
     : null
 
@@ -156,7 +159,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
     const offset = (firstDay.getDay() + 6) % 7 // convert Sunday=0 to Monday=0
     const start = new Date(firstDay)
     start.setDate(start.getDate() - offset)
-    
+
     const days = []
     for (let i = 0; i < 42; i++) {
       const d = new Date(start)
@@ -186,13 +189,13 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
   const convertTo24h = (ampmTime: string): string => {
     const [time, period] = ampmTime.split(' ')
     let [hours, minutes] = time.split(':').map(Number)
-    
+
     if (period === 'PM' && hours !== 12) {
       hours += 12
     } else if (period === 'AM' && hours === 12) {
       hours = 0
     }
-    
+
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
   }
 
@@ -210,7 +213,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
 
   const handleConfirmReservation = async () => {
     setErrorMessage(null)
-    
+
     // Validation
     if (!selectedPatientId) {
       setErrorMessage('Por favor selecciona un paciente')
@@ -231,7 +234,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
 
     try {
       setIsSubmitting(true)
-      
+
       // Format appointment data
       const appointmentDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), selectedDate)
       const dateStr = appointmentDate.toISOString().split('T')[0]
@@ -260,20 +263,47 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
         balance_paid: remaining === 0,
         payment_status: depositAmount > 0 || remaining === 0 ? ('partial' as const) : ('unpaid' as const),
       }
-      
+
       await createAppointment(newAppointment)
-      
+
       // Success - close modal and refresh appointments
       if (onAppointmentCreated) {
         onAppointmentCreated()
       }
       onOpenChange(false)
+
+      // Format friendly date and time for message
+      const dateFriendly = appointmentDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+      const timeFriendly = selectedTime
+      const waLink = getWhatsAppLink(
+        selectedPatient?.phone,
+        `Hola ${selectedPatient?.full_name}, te confirmamos tu turno para *${service?.name}* el día *${dateFriendly}* a las *${timeFriendly}*. Saludos, ${profile?.business_name || 'Gestor Pro'}.`
+      )
+
+      // Show toast
+      toast({
+        title: '¡Cita agendada con éxito!',
+        description: `Se reservó el turno para ${selectedPatient?.full_name}.`,
+        action: (
+          <div className="flex gap-2">
+            {waLink && (
+              <button
+                onClick={() => window.open(waLink, '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-green-600 text-white px-3 py-2 hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                <MessageCircle className="size-4" />
+                Notificar
+              </button>
+            )}
+          </div>
+        )
+      })
     } catch (error: any) {
       console.error('Error creating appointment:', error)
-      
+
       // Extract the specific error message from Supabase error
       let errorMsg = 'Error al crear la cita. Por favor intenta nuevamente.'
-      
+
       if (error?.message) {
         errorMsg = error.message
       } else if (error?.error_description) {
@@ -281,7 +311,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
       } else if (typeof error === 'string') {
         errorMsg = error
       }
-      
+
       setErrorMessage(errorMsg)
     } finally {
       setIsSubmitting(false)
@@ -474,13 +504,12 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
                       <button
                         key={idx}
                         onClick={() => handleSelectDay(day)}
-                        className={`aspect-square flex items-center justify-center text-xs font-semibold rounded-lg transition-all ${
-                          !isCurrent
-                            ? 'text-muted-foreground/30 cursor-default'
-                            : isSelected
+                        className={`aspect-square flex items-center justify-center text-xs font-semibold rounded-lg transition-all ${!isCurrent
+                          ? 'text-muted-foreground/30 cursor-default'
+                          : isSelected
                             ? 'bg-primary text-white'
                             : 'hover:bg-background text-foreground'
-                        }`}
+                          }`}
                         disabled={!isCurrent}
                       >
                         {day.getDate()}
@@ -501,11 +530,10 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
                   <button
                     key={time}
                     onClick={() => setSelectedTime(time)}
-                    className={`py-2.5 px-3 rounded-xl border text-sm font-semibold transition-all ${
-                      selectedTime === time
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-                    }`}
+                    className={`py-2.5 px-3 rounded-xl border text-sm font-semibold transition-all ${selectedTime === time
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                      }`}
                   >
                     {time}
                   </button>
@@ -548,7 +576,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
           >
             {'Cancelar'}
           </Button>
-          <Button 
+          <Button
             onClick={handleConfirmReservation}
             disabled={isSubmitting}
             className="gap-2 shadow-lg shadow-primary/20"
