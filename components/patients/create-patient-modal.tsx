@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth-context'
-import { createPatient } from '@/lib/api/patients'
-import { logPatientCreated } from '@/lib/api/activity'
+import { createPatientAction } from '@/lib/actions/patient-actions'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, User, X } from 'lucide-react'
 
@@ -39,19 +38,15 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
 
     setLoading(true)
     try {
-      const patient = await createPatient({
-        professional_id: profile.id,
+      // Server Action handles DB, Logging, and Email transactionally
+      const { patient } = await createPatientAction({
         full_name: formData.full_name,
-        dni: formData.dni, // DNI is now required
+        dni: formData.dni,
         email: formData.email || null,
         phone: formData.phone || null,
         date_of_birth: formData.date_of_birth || null,
         notes: formData.notes || null,
-        status: 'active',
       })
-
-      // Log activity
-      await logPatientCreated(profile.id, patient.id, patient.full_name)
 
       // Reset form
       setFormData({
