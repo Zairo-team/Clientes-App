@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth-context'
-import { createPatient } from '@/lib/api/patients'
-import { logPatientCreated } from '@/lib/api/activity'
+import { createPatientAction } from '@/lib/actions/patient-actions'
+import { getWhatsAppLink } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, User, X } from 'lucide-react'
+import { Loader2, User, X, MessageCircle } from 'lucide-react'
 
 interface CreatePatientModalProps {
   open: boolean
@@ -39,19 +39,15 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
 
     setLoading(true)
     try {
-      const patient = await createPatient({
-        professional_id: profile.id,
+      // Server Action handles DB, Logging, and Email transactionally
+      const { patient } = await createPatientAction({
         full_name: formData.full_name,
-        dni: formData.dni, // DNI is now required
+        dni: formData.dni,
         email: formData.email || null,
         phone: formData.phone || null,
         date_of_birth: formData.date_of_birth || null,
         notes: formData.notes || null,
-        status: 'active',
       })
-
-      // Log activity
-      await logPatientCreated(profile.id, patient.id, patient.full_name)
 
       // Reset form
       setFormData({
@@ -66,18 +62,36 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
       // Close modal first
       onOpenChange(false)
 
+      // WhatsApp link
+      const businessName = profile.business_name || 'Gestor Pro'
+      const waLink = getWhatsAppLink(
+        patient.phone,
+        `Hola ${patient.full_name}! 👋\n\nBienvenido a *${businessName}*.\n✅ Ya hemos creado tu ficha de paciente en nuestro sistema.\n\nCualquier consulta estamos a tu disposición.\nSaludos!`
+      )
+
       // Show toast
       toast({
         title: '¡Paciente creado con éxito!',
         description: `${patient.full_name} ha sido agregado al sistema.`,
         action: (
-          <button
-            onClick={() => router.push(`/pacientes/${patient.id}`)}
-            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700 transition-colors whitespace-nowrap"
-          >
-            Ver Detalle →
-          </button>
-        ),
+          <div className="flex gap-2">
+            {waLink && (
+              <button
+                onClick={() => window.open(waLink, '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-green-600 text-white px-3 py-2 hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                <MessageCircle className="size-4" />
+                Notificar
+              </button>
+            )}
+            <button
+              onClick={() => router.push(`/pacientes/${patient.id}`)}
+              className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-primary/20 text-primary px-3 py-2 hover:bg-primary/30 transition-colors whitespace-nowrap"
+            >
+              Ver Detalle
+            </button>
+          </div>
+        )
       })
 
       // Delay the callback to allow toast to render

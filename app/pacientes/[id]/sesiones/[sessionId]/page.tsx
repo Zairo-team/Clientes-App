@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Save, FileText, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, FileText, Loader2, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
 import { getSessionDetail, updateSessionNotes, updateSessionStatus, registerPayment, updateSessionRates, getSessionPayments } from '@/lib/api/sessions'
+import { getWhatsAppLink } from '@/lib/utils'
 import { SessionPaymentPanel } from '@/components/sessions/session-payment-panel'
 import { RegisterPaymentModal } from '@/components/sessions/register-payment-modal'
 import { AdjustRatesModal } from '@/components/sessions/adjust-rates-modal'
@@ -85,9 +86,10 @@ export default function SessionDetailPage() {
         getSessionPayments(sessionId)
       ])
 
-      setSession(sessionData as SessionWithRelations)
+      const validSession = sessionData as SessionWithRelations
+      setSession(validSession)
       setPayments(paymentsData as Sale[])
-      setNotes(sessionData.notes || '')
+      setNotes(validSession.notes || '')
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -133,9 +135,33 @@ export default function SessionDetailPage() {
     try {
       await updateSessionStatus(sessionId, newStatus, profile.id)
       setSession({ ...session, status: newStatus })
+
+      // WhatsApp Link (Only for meaningful status changes like Completed or Cancelled)
+      let waMessage = ''
+      if (newStatus === 'completed') {
+        waMessage = `Hola ${session.patient?.full_name}! 👋\nMuchas gracias por asistir a la sesión de hoy. ✅\n\n¡Nos vemos la próxima!\nSaludos, *${profile.business_name || 'Gestor Pro'}*`
+      } else if (newStatus === 'cancelled') {
+        waMessage = `Hola ${session.patient?.full_name}. ⚠️\nTe informamos que tu sesión del *${formatAppointmentDate(session.appointment_date)}* ha sido cancelada.\n\nPor favor contáctanos para reprogramar. 🗓️\nSaludos, *${profile.business_name || 'Gestor Pro'}*`
+      }
+
+      const waLink = waMessage ? getWhatsAppLink(session.patient?.phone, waMessage) : null
+
       toast({
         title: 'Estado actualizado',
         description: 'El estado de la sesión se actualizó correctamente',
+        action: (
+          <div className="flex gap-2">
+            {waLink && (
+              <button
+                onClick={() => window.open(waLink, '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-green-600 text-white px-3 py-2 hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                <MessageCircle className="size-4" />
+                Notificar
+              </button>
+            )}
+          </div>
+        )
       })
     } catch (error: any) {
       toast({
@@ -151,14 +177,37 @@ export default function SessionDetailPage() {
 
     try {
       const updatedSession = await registerPayment(sessionId, amount, profile.id)
-      setSession(prev => prev ? { ...prev, ...updatedSession } : null)
+      if (updatedSession) {
+        setSession(prev => prev ? { ...prev, ...(updatedSession as any) } : null)
+      }
       // Refresh payments list
       const updatedPayments = await getSessionPayments(sessionId)
       setPayments(updatedPayments as Sale[])
 
+      const formattedAmount = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount)
+
+      // WhatsApp Link
+      const waLink = getWhatsAppLink(
+        session?.patient?.phone,
+        `Hola ${session?.patient?.full_name}! 👋\n\n💰 *Comprobante de Pago*\nHemos recibido tu pago de: *${formattedAmount}*\nCorrespondiente a la sesión del: *${formatAppointmentDate(session!.appointment_date)}*\n\nMuchas gracias! ✨\n*${profile.business_name || 'Gestor Pro'}*`
+      )
+
       toast({
         title: 'Pago registrado',
-        description: `Se registró el pago de ${new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount)} exitosamente`,
+        description: `Se registró el pago de ${formattedAmount} exitosamente`,
+        action: (
+          <div className="flex gap-2">
+            {waLink && (
+              <button
+                onClick={() => window.open(waLink, '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-green-600 text-white px-3 py-2 hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                <MessageCircle className="size-4" />
+                Notificar
+              </button>
+            )}
+          </div>
+        )
       })
     } catch (error: any) {
       toast({
@@ -175,7 +224,9 @@ export default function SessionDetailPage() {
 
     try {
       const updatedSession = await updateSessionRates(sessionId, totalAmount, depositAmount, profile.id)
-      setSession(prev => prev ? { ...prev, ...updatedSession } : null)
+      if (updatedSession) {
+        setSession(prev => prev ? { ...prev, ...(updatedSession as any) } : null)
+      }
       toast({
         title: 'Tarifas actualizadas',
         description: 'Las tarifas se actualizaron correctamente',
