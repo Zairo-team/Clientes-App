@@ -63,9 +63,10 @@ export function CreatePatientModal({ open, onOpenChange, onPatientCreated }: Cre
       onOpenChange(false)
 
       // WhatsApp link
+      const businessName = profile.business_name || 'Gestor Pro'
       const waLink = getWhatsAppLink(
-        formData.phone,
-        `Hola ${formData.full_name}, ¡bienvenido a ${profile.business_name || 'Gestor Pro'}! Ya creamos tu perfil.`
+        patient.phone,
+        `Hola ${patient.full_name}! 👋\n\nBienvenido a *${businessName}*.\n✅ Ya hemos creado tu ficha de paciente en nuestro sistema.\n\nCualquier consulta estamos a tu disposición.\nSaludos!`
       )
 
       // Show toast

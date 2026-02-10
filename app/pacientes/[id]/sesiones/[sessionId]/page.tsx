@@ -139,9 +139,9 @@ export default function SessionDetailPage() {
       // WhatsApp Link (Only for meaningful status changes like Completed or Cancelled)
       let waMessage = ''
       if (newStatus === 'completed') {
-        waMessage = `Hola ${session.patient?.full_name}, muchas gracias por asistir a la sesión de hoy. ¡Nos vemos la próxima! ${profile.business_name || 'Gestor Pro'}.`
+        waMessage = `Hola ${session.patient?.full_name}! 👋\nMuchas gracias por asistir a la sesión de hoy. ✅\n\n¡Nos vemos la próxima!\nSaludos, *${profile.business_name || 'Gestor Pro'}*`
       } else if (newStatus === 'cancelled') {
-        waMessage = `Hola ${session.patient?.full_name}, tu sesión del ${formatAppointmentDate(session.appointment_date)} ha sido cancelada. Por favor contáctanos para reprogramar. ${profile.business_name || 'Gestor Pro'}.`
+        waMessage = `Hola ${session.patient?.full_name}. ⚠️\nTe informamos que tu sesión del *${formatAppointmentDate(session.appointment_date)}* ha sido cancelada.\n\nPor favor contáctanos para reprogramar. 🗓️\nSaludos, *${profile.business_name || 'Gestor Pro'}*`
       }
 
       const waLink = waMessage ? getWhatsAppLink(session.patient?.phone, waMessage) : null
@@ -189,7 +189,7 @@ export default function SessionDetailPage() {
       // WhatsApp Link
       const waLink = getWhatsAppLink(
         session?.patient?.phone,
-        `Hola ${session?.patient?.full_name}, recibimos tu pago de ${formattedAmount} por la sesión del ${formatAppointmentDate(session!.appointment_date)}. Saludos, ${profile.business_name || 'Gestor Pro'}.`
+        `Hola ${session?.patient?.full_name}! 👋\n\n💰 *Comprobante de Pago*\nHemos recibido tu pago de: *${formattedAmount}*\nCorrespondiente a la sesión del: *${formatAppointmentDate(session!.appointment_date)}*\n\nMuchas gracias! ✨\n*${profile.business_name || 'Gestor Pro'}*`
       )
 
       toast({

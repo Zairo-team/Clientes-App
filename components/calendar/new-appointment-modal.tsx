@@ -277,7 +277,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
       const timeFriendly = selectedTime
       const waLink = getWhatsAppLink(
         selectedPatient?.phone,
-        `Hola ${selectedPatient?.full_name}, te confirmamos tu turno para *${service?.name}* el día *${dateFriendly}* a las *${timeFriendly}*. Saludos, ${profile?.business_name || 'Gestor Pro'}.`
+        `Hola ${selectedPatient?.full_name}! 👋\n\n📅 *Confirmación de Turno*\nTe esperamos para:\n🔹 Servicio: *${service?.name}*\n🗓️ Día: *${dateFriendly}*\n⏰ Hora: *${timeFriendly}*\n\n📍 Te esperamos en *${profile?.business_name || 'nuestro consultorio'}*.\nSaludos!`
       )
 
       // Show toast
