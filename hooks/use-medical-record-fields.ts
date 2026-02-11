@@ -52,7 +52,7 @@ export function useMedicalRecordFields(profileId: string | null) {
       setCreating(true)
       const supabase = createClient()
       const optionsValue =
-        fieldType === 'select' && options?.length
+        (fieldType === 'select' || fieldType === 'multi-input' || fieldType === 'checkbox') && options?.length
           ? JSON.stringify(options)
           : null
 
@@ -131,7 +131,7 @@ export function useMedicalRecordFields(profileId: string | null) {
       setCreating(true)
       const supabase = createClient()
       const optionsValue =
-        fieldType === 'select' && options?.length
+        (fieldType === 'select' || fieldType === 'multi-input' || fieldType === 'checkbox') && options?.length
           ? JSON.stringify(options)
           : null
 

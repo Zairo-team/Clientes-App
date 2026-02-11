@@ -65,7 +65,7 @@ export default function NewFieldForm({
 
   const handleSubmit = async () => {
     const options =
-      (newType === 'select' || newType === 'multi-input') && newOptions.trim()
+      (newType === 'select' || newType === 'multi-input' || newType === 'checkbox') && newOptions.trim()
         ? newOptions.split(',').map((s) => s.trim())
         : undefined
 
@@ -132,7 +132,7 @@ export default function NewFieldForm({
         </div>
       </div>
 
-      {(newType === 'select' || newType === 'multi-input') && (
+      {(newType === 'select' || newType === 'multi-input' || newType === 'checkbox') && (
         <div className="space-y-2">
           <Label>Opciones (separadas por coma)</Label>
           <Input

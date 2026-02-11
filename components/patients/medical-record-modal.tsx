@@ -29,6 +29,30 @@ export default function MedicalRecordModal({ open, onOpenChange, patient, profes
   const [medicalRecordId, setMedicalRecordId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Record<string, any>>({})
 
+  const parseOptions = (options?: string | null) => {
+    if (!options) return []
+    try {
+      const parsed = JSON.parse(options)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  const parseSelected = (value: any) => {
+    if (!value) return []
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
   useEffect(() => {
     if (open && patient?.id) {
       loadData()
@@ -168,44 +192,73 @@ export default function MedicalRecordModal({ open, onOpenChange, patient, profes
           <div className="py-8 text-center"><Loader2 className="animate-spin mx-auto" /></div>
         ) : (
           <div className="space-y-4">
-            {fields.map((f) => (
-              <div key={f.id} className="space-y-1">
-                <Label className="text-sm font-medium">{f.field_name}{f.is_required ? ' *' : ''}</Label>
-                {f.field_type === 'text' && (
-                  <Input value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
-                )}
-                {f.field_type === 'number' && (
-                  <Input type="number" value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
-                )}
-                {f.field_type === 'date' && (
-                  <Input type="date" value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
-                )}
-                {f.field_type === 'textarea' && (
-                  <Textarea value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
-                )}
-                {f.field_type === 'select' && (
-                  <Select value={formData[f.id] ?? ''} onValueChange={(v) => handleChange(f.id, v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      {(f.options ? JSON.parse(f.options) : []).map((opt: string, idx: number) => (
-                        <SelectItem key={idx} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {f.field_type === 'checkbox' && (
-                  <Checkbox checked={!!formData[f.id]} onCheckedChange={(v) => handleChange(f.id, v)} />
-                )}
-                {f.field_type === 'multi-input' && (
-                  <TagsInput
-                    value={(formData[f.id] ? JSON.parse(formData[f.id]) : []) as string[]}
-                    onChange={(values) => handleChange(f.id, JSON.stringify(values))}
-                    suggestedValues={f.options ? JSON.parse(f.options) : []}
-                    placeholder="Escribe y presiona Enter"
-                  />
-                )}
-              </div>
-            ))}
+            {fields.map((f) => {
+              const opts = parseOptions(f.options)
+              const selectedValues = parseSelected(formData[f.id])
+
+              return (
+                <div key={f.id} className="space-y-1">
+                  <Label className="text-sm font-medium">{f.field_name}{f.is_required ? ' *' : ''}</Label>
+                  {f.field_type === 'text' && (
+                    <Input value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
+                  )}
+                  {f.field_type === 'number' && (
+                    <Input type="number" value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
+                  )}
+                  {f.field_type === 'date' && (
+                    <Input type="date" value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
+                  )}
+                  {f.field_type === 'textarea' && (
+                    <Textarea value={formData[f.id] ?? ''} onChange={(e) => handleChange(f.id, e.target.value)} />
+                  )}
+                  {f.field_type === 'select' && (
+                    <Select value={formData[f.id] ?? ''} onValueChange={(v) => handleChange(f.id, v)}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        {opts.map((opt: string, idx: number) => (
+                          <SelectItem key={idx} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {f.field_type === 'checkbox' && opts.length === 0 && (
+                    <Checkbox checked={!!formData[f.id]} onCheckedChange={(v) => handleChange(f.id, v)} />
+                  )}
+                  {f.field_type === 'checkbox' && opts.length > 0 && (
+                    <div className="space-y-2">
+                      {opts.map((opt, idx) => {
+                        const inputId = `${f.id}-${idx}`
+                        const selected = selectedValues.includes(opt)
+                        return (
+                          <div key={opt} className="flex items-center gap-2">
+                            <Checkbox
+                              id={inputId}
+                              checked={selected}
+                              onCheckedChange={(checked) => {
+                                const current = parseSelected(formData[f.id])
+                                const next = checked
+                                  ? Array.from(new Set([...current, opt]))
+                                  : current.filter((v) => v !== opt)
+                                handleChange(f.id, JSON.stringify(next))
+                              }}
+                            />
+                            <Label htmlFor={inputId}>{opt}</Label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {f.field_type === 'multi-input' && (
+                    <TagsInput
+                      value={(formData[f.id] ? JSON.parse(formData[f.id]) : []) as string[]}
+                      onChange={(values) => handleChange(f.id, JSON.stringify(values))}
+                      suggestedValues={f.options ? JSON.parse(f.options) : []}
+                      placeholder="Escribe y presiona Enter"
+                    />
+                  )}
+                </div>
+              )
+            })}
 
             <div className="flex items-center justify-end gap-2 pt-4">
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>

@@ -34,7 +34,7 @@ export default function MedicalRecordModal({
 
   const handleCreateField = async (
     name: string,
-    type: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox',
+    type: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox' | 'multi-input',
     placeholder: string,
     options?: string[]
   ) => {
