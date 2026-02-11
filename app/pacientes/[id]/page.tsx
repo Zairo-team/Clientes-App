@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Calendar as CalendarIcon, Plus, Phone, Mail, Award as IdCard, Loader2, Trash2, Check, Clock, X, AlertCircle, Eye } from 'lucide-react'
+import { ArrowLeft, Calendar as CalendarIcon, Plus, Phone, Mail, Award as IdCard, Loader2, Trash2, Check, Clock, X, AlertCircle, Eye, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { NewAppointmentModal } from '@/components/calendar/new-appointment-modal'
 import { EditPatientModal } from '@/components/patients/edit-patient-modal'
+import MedicalRecordModal from '@/components/patients/medical-record-modal'
 import ProtectedRoute from '@/components/protected-route'
 import { useAuth } from '@/lib/auth-context'
 import { useParams, useRouter } from 'next/navigation'
@@ -41,6 +42,7 @@ export default function PatientDetailPage() {
 
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showMedicalRecordModal, setShowMedicalRecordModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -303,6 +305,14 @@ export default function PatientDetailPage() {
                         Editar Información
                       </Button>
                       <Button
+                        variant="outline"
+                        className="w-full flex items-center gap-2 font-semibold bg-transparent h-10 text-sm mt-2"
+                        onClick={() => setShowMedicalRecordModal(true)}
+                      >
+                        <FileText className="w-4 h-4" />
+                        Ficha Médica
+                      </Button>
+                      <Button
                         variant="destructive"
                         className="w-full flex items-center gap-2 font-semibold h-10 text-sm"
                         onClick={() => setShowDeleteDialog(true)}
@@ -415,6 +425,14 @@ export default function PatientDetailPage() {
           onOpenChange={(open) => setShowScheduleModal(open)}
           onAppointmentCreated={loadPatientData}
           initialPatientId={patient.id}
+        />
+
+        <MedicalRecordModal
+          open={showMedicalRecordModal}
+          onOpenChange={setShowMedicalRecordModal}
+          patient={patient}
+          professionalId={profile?.id || ''}
+          onSaved={() => loadPatientData()}
         />
 
 
