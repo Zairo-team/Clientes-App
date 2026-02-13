@@ -1,13 +1,7 @@
 "use server"
 
-import { Resend } from "resend"
 import { createClient } from "@/lib/supabase/server"
 import { type Patient, type Profile } from "@/lib/supabase/client"
-
-const resend = new Resend(process.env.RESEND_API_KEY)
-
-// Default sender if process.env.MAIL_FROM is not set
-const DEFAULT_SENDER = "onboarding@resend.dev"
 
 type Input = {
     full_name: string
@@ -72,31 +66,7 @@ export async function createPatientAction(input: Input) {
         description: `Se creó el paciente ${patient.full_name}`,
     } as any)
 
-    // 5. Send Email (if email exists)
-    if (patient.email) {
-        try {
-            const appName = profile?.business_name || "Gestor Pro"
-            const sender = process.env.MAIL_FROM || DEFAULT_SENDER
-
-            await resend.emails.send({
-                from: `${appName} <${sender}>`,
-                to: [patient.email],
-                subject: `¡Bienvenido/a a ${appName}!`,
-                html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>¡Bienvenido/a a ${appName}!</h2>
-            <p>Hola ${patient.full_name} 👋</p>
-            <p><strong>${profile?.full_name ?? "Tu profesional"}</strong> te registró como paciente.</p>
-            <p>Pronto recibirás notificaciones sobre tus turnos y pagos.</p>
-            <p style="color: #666; font-size: 12px; margin-top: 20px;">Ante cualquier duda, podés responder este correo.</p>
-          </div>
-        `,
-                replyTo: profile?.email || undefined
-            })
-        } catch (err) {
-            console.error("Error enviando mail de bienvenida", err)
-        }
-    }
+    return { ok: true, patient }
 
     return { ok: true, patient }
 }
