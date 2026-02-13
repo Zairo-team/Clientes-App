@@ -44,7 +44,6 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
   const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
-  const [reminderEnabled, setReminderEnabled] = useState(true)
   const [deposit, setDeposit] = useState("0")
   const [patients, setPatients] = useState<Patient[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -542,21 +541,7 @@ export function NewAppointmentModal({ open, onOpenChange, onAppointmentCreated, 
             </div>
           </div>
 
-          {/* Reminder Toggle */}
-          <div className="bg-muted/50 p-4 rounded-xl border border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="size-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                <Bell className="size-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">{'Recordatorio de Cita'}</p>
-                <p className="text-xs text-muted-foreground">
-                  {'Se enviará un email 24h antes de la sesión.'}
-                </p>
-              </div>
-            </div>
-            <Switch checked={reminderEnabled} onCheckedChange={setReminderEnabled} />
-          </div>
+
 
           {/* Error Message */}
           {errorMessage && (
